@@ -2,17 +2,18 @@
 
 ## この記事のスナップショット
 
-[RaycastVehicleデモリンク](002/002_RaycastVehicle.html)
+RaycastVehicleデモ画像  
+![RaycastVehicleデモ画像](https://storage.googleapis.com/zenn-user-upload/de95242e2a8a-20241025.jpg)
 
-![RaycastVehicleデモ画像](002/pic/002_raycast.jpg)
+RigidVehicleデモ画像  
+![RigidVehicleデモ画像](https://storage.googleapis.com/zenn-user-upload/5a6067bfbbe7-20241025.jpg)
 
-[RigidVehicleデモリンク](002/002_RigidVehicle.html)
+カメラ視点：バードビュー(左上)、フロントビュー（右上）、トップビュー(左下)、OrbitControls（右下）
+![ss_camera](https://storage.googleapis.com/zenn-user-upload/e59e9d596361-20241025.jpg)
 
-![RigidVehicleデモ画像](002/pic/002_rigid.jpg)
+ソース
 
-![カメラ視点：バードビュー(左上)、フロントビュー（右上）、トップビュー(左下)、OrbitControls（右下）](002/pic/002_camera.jpg)
-
-[ソース](002/)
+https://github.com/fnamuoo/webgl/blob/main/002
 
 動かし方
 
@@ -101,15 +102,11 @@ cannonの物理エンジンにある 2つの車モデル、「Raycast vehicle」
 - OrbitControls の手動操作＋自動回転
 - OrbitControls の手動操作
 
-![バードビュー](002/pic/002_camera_birdview.jpg)
+バードビュー  
+![](https://storage.googleapis.com/zenn-user-upload/f6ecf332e8f1-20241025.jpg)
 
 バードビューは、カメラを車の後方・上空にもってきて、視点を車の位置にあわせます。
-カメラ位置の計算は、
-カメラの相対位置（車の後方・上空）のベクトルに
-車の quaternion をかけ合わせることで、
-現在の車の向きに合わせた位置を求めることができます。
-カメラの相対位置は、車の初期の向きに関係し、作成時に x軸のマイナス方向を向いて作成しているので、
-x軸プラス方向が後方の位置になります。
+カメラ位置の計算は、カメラの相対位置（車の後方・上空）のベクトルに車の quaternion をかけ合わせることで、現在の車の向きに合わせた位置を求めることができます。カメラの相対位置は、車の初期の向きに関係し、作成時に x軸のマイナス方向を向いて作成しているので、x軸プラス方向が後方の位置になります。
 
 ```js
         var vposi = moVehicle.chassisBody.position;
@@ -121,12 +118,11 @@ x軸プラス方向が後方の位置になります。
         camera.lookAt(new THREE.Vector3(vposi.x, vposi.y, vposi.z));
 ```
 
-![フロントビュー](002/pic/002_camera_frontview.jpg)
+フロントビュー
+![](https://storage.googleapis.com/zenn-user-upload/b627b9f8cb3d-20241025.jpg)
 
 フロントビューは、カメラを車の中心位置にもってきて、視点を車の前方にあわせます。
-視点の位置（車の前方）の計算は、
-視点の相対位置（前方位置）のベクトルに
-車の quaternion をかけ合わせることで求めることができます。
+視点の位置（車の前方）の計算は、視点の相対位置（前方位置）のベクトルに車の quaternion をかけ合わせることで求めることができます。
 
 ```js
         var vposi = moVehicle.chassisBody.position;
@@ -138,12 +134,11 @@ x軸プラス方向が後方の位置になります。
         camera.lookAt(new THREE.Vector3(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z));
 ```
 
-![トップビュー](002/pic/002_camera_topview.jpg)
+トップビュー
+![](https://storage.googleapis.com/zenn-user-upload/0365bf36b662-20241025.jpg)
 
-トップビューは、垂直に上空から車を眺めたものです。
-さらに進行方向（車の向き）を上にします。
+トップビューは、垂直に上空から車を眺めたものです。さらに進行方向（車の向き）を上にします。
 車の向き（方位角）は車の quaternion から toEuler()から求めることができます。
-
 カメラ位置は車の上空とし、視点は車の位置、車の向きに合わせてカメラの rotation を設定します。
 
 ```js
@@ -158,15 +153,12 @@ x軸プラス方向が後方の位置になります。
         camera.rotation.z = viecleRotY;
 ```
 
-![OrbitControls の手動操作＋自動回転](002/pic/002_camera_OCauto.jpg)
+OrbitControls の手動操作＋自動回転
+![](https://storage.googleapis.com/zenn-user-upload/9a0b6a2d29a2-20241025.jpg)
 
-OrbitControls の手動操作＋自動回転するには、
-autoRotate フラグを true とし、
-視点を OrbitControls.target に設定します。
-そして OrbitControls の操作を反映するには update() を呼び出します。
+OrbitControls の手動操作＋自動回転するには、autoRotate フラグを true とし、視点を OrbitControls.target に設定します。そして OrbitControls の操作を反映するには update() を呼び出します。
 
-自動的に視点の位置が変わりますが、
-マウスのドラッグ操作やホイール操作で視点を変更することもできます。
+自動的に視点の位置が変わりますが、マウスのドラッグ操作やホイール操作で視点を変更することもできます。
 
 ```js
         var vposi = moVehicle.chassisBody.position;
@@ -175,12 +167,10 @@ autoRotate フラグを true とし、
         orbitControls.update();
 ```
 
-![OrbitControls の手動操作](002/pic/002_camera_OCmanual.jpg)
+OrbitControls の手動操作  
+![](https://storage.googleapis.com/zenn-user-upload/8a1ae323e1e6-20241025.jpg)
 
-OrbitControls の手動操作には、
-autoRotate フラグを false とし、
-OrbitControls の update() を呼び出すだけになります。
-マウスのドラッグ操作やホイール操作で視点を変更できます。
+OrbitControls の手動操作には、autoRotate フラグを false とし、OrbitControls の update() を呼び出すだけになります。マウスのドラッグ操作やホイール操作で視点を変更できます。
 
 ```js
         orbitControls.autoRotate = false;
@@ -191,9 +181,7 @@ OrbitControls の update() を呼び出すだけになります。
 
 車を操作しているとひっくり返ることがあり、そのときの姿勢を戻す方法を示します。
 
-Raycast モデルの場合は
-プロパティの chassisBody の姿勢（position, quaternion）と
-速度（velocity, angularVelocity）を制御します。
+Raycast モデルの場合はプロパティの chassisBody の姿勢（position, quaternion）と速度（velocity, angularVelocity）を制御します。
 
 ```js
         // 車をひっくり返す ..
@@ -212,10 +200,8 @@ Raycast モデルの場合は
         moVehicle.chassisBody.angularVelocity = new CANNON.Vec3(0, 0, 0);
 ```
 
-系が x-z 平面で、y軸方向に重力がかかっているので、
-垂直方向（y軸方向）に車を持ち上げます。
-車の向きを quaternion から取得して、
-方向だけを quaternion に再度設定します。
+系が x-z 平面で、y軸方向に重力がかかっているので、垂直方向（y軸方向）に車を持ち上げます。
+車の向きを quaternion から取得して、方向だけを quaternion に再度設定します。
 
 車の向き（方位角）は quaternion の toEuler() の y 成分から取得できます。
 改めてY軸周りに方位角で回転させた quaternion を chassisBody に設定します。
@@ -255,16 +241,11 @@ Raycast モデルの場合は
 
 Rigid モデルではシャーシ（本体）とホイール（タイヤ）が一体になっていないようです。
 シャーシだけを移動、回転させてもホイールが置き去りになるようです。
-ホイールの相対位置を再計算して正しい位置に配置しないと、
-次の瞬間にシャーシとホイールを接続する制約が働き、
-離れた位置から無理やりくっつくような動きなり、
-時におかしな位置にくっつく場合があります。
+ホイールの相対位置を再計算して正しい位置に配置しないと、次の瞬間にシャーシとホイールを接続する制約が働き、離れた位置から無理やりくっつくような動きなり、時におかしな位置にくっつく場合があります。
 
-相対位置を再計算するのは面倒なので、垂直に平行移動（上方に移動）して、
-車を回転させるような衝撃をシャーシに加えて、回転させます。
+相対位置を再計算するのは面倒なので、垂直に平行移動（上方に移動）して、車を回転させるような衝撃をシャーシに加えて、回転させます。
 
-パッと見、シャーシの片方が跳ねあがって姿勢を戻す、アクロバットな動きをしますが、
-下手に位置を再計算するよりも「安定した姿勢の戻し方」なようです。
+パッと見、シャーシの片方が跳ねあがって姿勢を戻す、アクロバットな動きをしますが、下手に位置を再計算するよりも「安定した姿勢の戻し方」なようです。
 
 ------------------------------------------------------------
 
