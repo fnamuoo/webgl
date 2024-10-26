@@ -8,7 +8,9 @@
 コード整形後のRigidVehicleデモ画像
 ![](https://storage.googleapis.com/zenn-user-upload/1b9277242f58-20241026.jpg)
 
-[ソース](005/)
+ソース
+
+https://github.com/fnamuoo/webgl/blob/main/005
 
 動かし方
 
