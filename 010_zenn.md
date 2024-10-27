@@ -1,0 +1,81 @@
+# Three.js Cannon.es 調査資料 - ３輪のテスト
+
+## この記事のスナップショット
+
+3輪デモ画像
+![](https://storage.googleapis.com/zenn-user-upload/5ded49016ebc-20241027.jpg)
+
+ソース
+
+https://github.com/fnamuoo/webgl/blob/main/010
+
+
+動かし方
+
+- ソース一式を WEB サーバ上に配置してください
+- 車の操作法
+  - カーソル上 .. アクセル
+  - カーソル下 .. バック
+  - カーソル左、カーソル右 .. ハンドル
+  - 'b' .. ブレーキ
+  - 'c' .. カメラ視点の変更
+  - 'a' .. 姿勢を左に傾ける
+  - 'd' .. 姿勢を右に傾ける
+  - 'r' .. 姿勢を戻す
+
+## 概要
+
+- 3輪のテスト
+
+## やったこと
+
+RaycastVehicleクラスは4輪に限っていません。今回は3輪にチャレンジします。
+ホイールは前輪1つ、後輪2つにします。
+
+```js
+  // ３輪（バイク
+  wheelOptions.chassisConnectionPointLocal.set(-2, 0, 0)
+  moVehicle.addWheel(wheelOptions)
+  wheelOptions.chassisConnectionPointLocal.set(2, 0, 1.8)
+  moVehicle.addWheel(wheelOptions)
+  wheelOptions.chassisConnectionPointLocal.set(2, 0, -1.8)
+  moVehicle.addWheel(wheelOptions)
+```
+
+他にも細かい修正はありますが、2輪のときとほぼ同様なので割愛します。
+実際に動かしてみると二輪に比べ各段に安定してますが、何か物足りない。
+車体を傾けるアクションとして、後輪のサスペンションが一時的に弱くなるようにキーバインドを追加します。
+
+```js
+  document.addEventListener('keydown', (event) => {
+    switch (event.key) {
+      ...
+      case 'a':
+        // 左のホイールのサスを弱めて、左に車体を傾けさせる
+        moVehicle.wheelInfos[1].maxSuspensionForce = 100;
+        break
+
+      case 'd':
+        // 右のホイールのサスを弱めて、右に車体を傾けさせる
+        moVehicle.wheelInfos[2].maxSuspensionForce = 100;
+        break
+      ...
+  }
+  document.addEventListener('keyup', (event) => {
+    switch (event.key) {
+      case 'a':
+        // サスを戻す（車体を戻す）
+        moVehicle.wheelInfos[1].maxSuspensionForce = 100000;
+        break
+      case 'd':
+        // サスを戻す（車体を戻す）
+        moVehicle.wheelInfos[2].maxSuspensionForce = 100000;
+        break
+      ...
+```
+
+3輪の傾き画像
+![](https://storage.googleapis.com/zenn-user-upload/69871af49ce8-20241027.jpg)
+
+ハンドル操作と組み合わせるといい感じのコーナリングになります。ただ、惜しむらくはホイールの傾きがそのままなこと。斜めに傾けたかったのですがちょっとハマってしまったのでそのままに。ホイールを球にしてしまえば違和感が薄まる気もしますがそれはそれで負けた気もする。でも満足したので3輪はここまでとします。
+
