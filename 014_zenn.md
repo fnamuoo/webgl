@@ -5,16 +5,14 @@
 バネの挙動
 ![](https://storage.googleapis.com/zenn-user-upload/890253bd0efe-20241027.jpg)
 
-- マウス操作 .. カメラ位置の変更
-
 ソース
 
 https://github.com/fnamuoo/webgl/blob/main/014
 
-
 動かし方
 
 - ソース一式を WEB サーバ上に配置してください
+- マウス操作 .. カメラ位置の変更
 
 ## 概要
 
@@ -22,7 +20,7 @@ https://github.com/fnamuoo/webgl/blob/main/014
 
 ## CANNON の制約(constraint)
 
-物理エンジンCannon.esにおいて古典力学のふるまい、とりわけ2つの物体の動きを制限するものとして下記があります。
+物理エンジン Cannon.es において古典力学のふるまい、とりわけ2つの物体の動きを制限するものとして下記があります。
 
 クラス名               | 説明・例
 -----------------------|-----------------------------
