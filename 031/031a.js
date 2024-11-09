@@ -1,5 +1,10 @@
 // mode:javascript
 
+// 車の挙動を変更するために、github の025 をベースに
+
+// - x_025_2
+//   - スピードメータを左下に表示
+
 import * as THREE from "three";
 import * as CANNON from "cannon";
 import { OrbitControls } from "orbitcontrols";
@@ -37,12 +42,10 @@ function setupWorld() {
     scene.fog = new THREE.Fog(0x222222, 1000, 2000)
 
     // Renderer
-    const canvasElement = document.querySelector("#myCanvas");
+    const canvasElement = document.querySelector("#mainCanvas");
     renderer = new THREE.WebGLRenderer({ canvas: canvasElement, antialias: true })
     renderer.setSize(width, height);
-
     renderer.setClearColor(scene.fog.color, 1)
-
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
@@ -76,62 +79,41 @@ window.onload = () => {
 
   const moGroundMtr = new CANNON.Material({name: 'ground'})
 
-    var vehicleList = [];
-    var vehicle1;
-    if (1) {
-      vehicle1 = new vb.VehicleFR01(scene, world, moGroundMtr);
-      vehicle1.init();
-      vehicleList.push(vehicle1);
-      const vehicle2 = new vb.VehicleFR02(scene, world, moGroundMtr);
-      vehicle2.init();
-      vehicleList.push(vehicle2);
-      const vehicle3 = new vb.VehicleFF01(scene, world, moGroundMtr);
-      vehicle3.init();
-      vehicleList.push(vehicle3);
-      const vehicle4 = new vb.VehicleFF02(scene, world, moGroundMtr);
-      vehicle4.init();
-      vehicleList.push(vehicle4);
-      const vehicle5 = new vb.Vehicle4WD01(scene, world, moGroundMtr);
-      vehicle5.init();
-      vehicleList.push(vehicle5);
-      const vehicle6 = new vb.Vehicle4WD02(scene, world, moGroundMtr);
-      vehicle6.init();
-      vehicleList.push(vehicle6);
+  var vehicleList = [];
+  var vehicle1;
+  if (1) {
+    vehicle1 = new vb.VehicleFR01(scene, world, moGroundMtr);
+    vehicle1.init();
+    vehicleList.push(vehicle1);
+    const vehicle2 = new vb.VehicleFR02(scene, world, moGroundMtr);
+    vehicle2.init();
+    vehicleList.push(vehicle2);
+    const vehicle3 = new vb.VehicleFF01(scene, world, moGroundMtr);
+    vehicle3.init();
+    vehicleList.push(vehicle3);
+    const vehicle4 = new vb.VehicleFF02(scene, world, moGroundMtr);
+    vehicle4.init();
+    vehicleList.push(vehicle4);
+    const vehicle5 = new vb.Vehicle4WD01(scene, world, moGroundMtr);
+    vehicle5.init();
+    vehicleList.push(vehicle5);
+    const vehicle6 = new vb.Vehicle4WD02(scene, world, moGroundMtr);
+    vehicle6.init();
+    vehicleList.push(vehicle6);
+  }
+
+  // Build the car chassis
+  var vehicle = vehicle1;
+  ivehicle = 0;
+
+  for (let i = 0; i < 3; ++i) {
+    world.step(1/60)
+
+    for (let ii = 0; ii < vehicleList.length; ++ii) {
+      vehicleList[ii].setPosition(iniX-5*ii, iniY, iniZ-2*ii, iniRotY);
+      vehicleList[ii].viewUpdate();
     }
-
-    if (0) {
-      vehicle1 = new vb.VehicleFR11(scene, world, moGroundMtr);
-      vehicle1.init();
-      vehicleList.push(vehicle1);
-      const vehicle2 = new vb.VehicleFR12(scene, world, moGroundMtr);
-      vehicle2.init();
-      vehicleList.push(vehicle2);
-      const vehicle3 = new vb.VehicleFF11(scene, world, moGroundMtr);
-      vehicle3.init();
-      vehicleList.push(vehicle3);
-      const vehicle4 = new vb.VehicleFF12(scene, world, moGroundMtr);
-      vehicle4.init();
-      vehicleList.push(vehicle4);
-      const vehicle5 = new vb.Vehicle4WD11(scene, world, moGroundMtr);
-      vehicle5.init();
-      vehicleList.push(vehicle5);
-      const vehicle6 = new vb.Vehicle4WD12(scene, world, moGroundMtr);
-      vehicle6.init();
-      vehicleList.push(vehicle6);
-    }
-
-    // Build the car chassis
-    var vehicle = vehicle1;
-    ivehicle = 0;
-
-    for (let i = 0; i < 3; ++i) {
-      world.step(1/60)
-
-      for (let ii = 0; ii < vehicleList.length; ++ii) {
-        vehicleList[ii].setPosition(iniX-5*ii, iniY, iniZ-2*ii, iniRotY);
-        vehicleList[ii].viewUpdate();
-      }
-    }
+  }
 
   // ----------------------------------------
   // コース
@@ -150,6 +132,7 @@ window.onload = () => {
   scene.add(viGround2Mesh);
   viGround2Mesh.position.copy(moGround2Body.position);
   viGround2Mesh.quaternion.copy(moGround2Body.quaternion);
+
 
   // 球 作成
   const radius = 5;
@@ -172,10 +155,21 @@ window.onload = () => {
   })
   world.addContactMaterial(sphere_ground)
 
-
-
   var cameraPosi = 0;
 
+  // キー同時押しのときに、挙動が思ったようにならない
+  // - ArrowUp を押したまま、 ArrowLeft を押して放しても、「ArrowUp の keydown」イベントが発生しない
+  // 再度キーを押下するとイベント発生することから、
+  // 下記のよう キーイベント発生時の状態を記録する（保持する）挙動に切り替える
+  // 但し、対象は (アクセル操作、ハンドル、ブレーキ（サイドブレーキ）、バック)に限る
+  var keyEvnt = {
+    forwards:false,
+    backwards:false,
+    left:false,
+    right:false,
+    brake:false,
+    sidebrake:false
+  };
 
   // Keybindings
   // Add force on keydown
@@ -187,32 +181,31 @@ window.onload = () => {
       case 'ArrowDown':
         vehicle.keydown_ArrowDown();
         break
-
       case 'ArrowLeft':
         vehicle.keydown_ArrowLeft();
         break
       case 'ArrowRight':
         vehicle.keydown_ArrowRight();
         break
-
       case 'b':
         vehicle.keydown_brake();
         break
-
       case 'n':
         vehicle.keydown_sidebrake();
         break
-
+      case 'x':
+        vehicle.keydown_shift_up();
+        break;
+      case 'z':
+        vehicle.keydown_shift_down();
+        break;
       case 'c':
         cameraPosi = (cameraPosi + 1) % 5;
         break;
-
-      // case 'p':
       case 'r':
         // 車の姿勢を戻す／車をひっくり返す ..
         vehicle.keydown_resetPosture();
         break;
-
       case '1':
       case '2':
       case '3':
@@ -237,7 +230,10 @@ window.onload = () => {
           vehicle.setPosition(px, py, pz, 0.0);
         }
         break;
-
+      case ' ':
+        var speed = vehicle.getSpeed();
+        speed = parseInt(speed*10)/10.0;
+        console.log("speed:", speed);
     }
   })
 
@@ -250,18 +246,15 @@ window.onload = () => {
       case 'ArrowDown':
         vehicle.keyup_ArrowDown();
         break
-
       case 'ArrowLeft':
         vehicle.keyup_ArrowLeft();
         break
       case 'ArrowRight':
         vehicle.keyup_ArrowRight();
         break
-
       case 'b':
         vehicle.keyup_brake();
         break
-
     }
   })
 
@@ -277,8 +270,6 @@ window.onload = () => {
 
   var iroty = 0;
   function animate() {
-    requestAnimationFrame(animate)
-
     const timeStep = 1 / 60;
     world.step(timeStep)
 
@@ -289,47 +280,68 @@ window.onload = () => {
     // 車関連
     vehicle.viewUpdate();
 
-      // カメラ・視点 関連
-      var chassisBody = vehicle.getModel().chassisBody;
-      var vposi = chassisBody.position;
-      var vquat = chassisBody.quaternion;
+    // カメラ・視点 関連
+    var chassisBody = vehicle.getModel().chassisBody;
+    var vposi = chassisBody.position;
+    var vquat = chassisBody.quaternion;
 
-      if (cameraPosi == 0) {
-        // 後背からビュー / 車の後方位置から正面に向けて
-        var vv = vquat.vmult(new CANNON.Vec3(23, 5, 0));  // 後方、高さ、左右
-        camera.position.set(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z);
-        camera.rotation.z = 0;
-        camera.lookAt(new THREE.Vector3(vposi.x, vposi.y, vposi.z));
-      } else if (cameraPosi == 1) {
-        // フロントビュー（ドライバー視点) / 車の中心位置から正面に向けて
-        camera.position.copy(new THREE.Vector3(vposi.x, vposi.y+2, vposi.z));
-        camera.rotation.z = 0;
-        var vv = vquat.vmult(new CANNON.Vec3(-20, 0, 0));  // 前方、高さ、左右
-        camera.lookAt(new THREE.Vector3(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z));
-      } else if (cameraPosi == 2) {
-        // トップビュー 上空から / 車の前面が上に
-        camera.position.set(vposi.x, vposi.y + 200, vposi.z);
-        camera.lookAt(new THREE.Vector3(vposi.x, vposi.y, vposi.z));
-        var veuler = new CANNON.Vec3(0, 0, 0);
-        vquat.toEuler(veuler);
-        var viecleRotY = veuler.y + Math.PI / 2;  // X軸負の方向を向いて作成したので、上を向くよう90度ずらす
-        camera.rotation.z = viecleRotY;
+    if (cameraPosi == 0) {
+      // 後背からビュー / 車の後方位置から正面に向けて
+      var vv = vquat.vmult(new CANNON.Vec3(23, 5, 0));  // 後方、高さ、左右
+      camera.position.set(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z);
+      camera.rotation.z = 0;
+      camera.lookAt(new THREE.Vector3(vposi.x, vposi.y, vposi.z));
+    } else if (cameraPosi == 1) {
+      // フロントビュー（ドライバー視点) / 車の中心位置から正面に向けて
+      camera.position.copy(new THREE.Vector3(vposi.x, vposi.y+2, vposi.z));
+      camera.rotation.z = 0;
+      var vv = vquat.vmult(new CANNON.Vec3(-20, 0, 0));  // 前方、高さ、左右
+      camera.lookAt(new THREE.Vector3(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z));
+    } else if (cameraPosi == 2) {
+      // トップビュー 上空から / 車の前面が上に
+      camera.position.set(vposi.x, vposi.y + 200, vposi.z);
+      camera.lookAt(new THREE.Vector3(vposi.x, vposi.y, vposi.z));
+      var veuler = new CANNON.Vec3(0, 0, 0);
+      vquat.toEuler(veuler);
+      var viecleRotY = veuler.y + Math.PI / 2;  // X軸負の方向を向いて作成したので、上を向くよう90度ずらす
+      camera.rotation.z = viecleRotY;
 
-      } else if (cameraPosi == 3) {
-        // // カスタムなの自動回転
-        orbitControls.autoRotate = true;
-        orbitControls.target = new THREE.Vector3(vposi.x, vposi.y, vposi.z);
-        orbitControls.update();
+    } else if (cameraPosi == 3) {
+      // // カスタムなの自動回転
+      orbitControls.autoRotate = true;
+      orbitControls.target = new THREE.Vector3(vposi.x, vposi.y, vposi.z);
+      orbitControls.update();
 
-      } else {
-        // _cameraPosi == 4
-        // OrbitControls のマウス操作に任せる
-        orbitControls.autoRotate = false;
-        orbitControls.update();
-      }
+    } else {
+      // _cameraPosi == 4
+      // OrbitControls のマウス操作に任せる
+      orbitControls.autoRotate = false;
+      orbitControls.update();
+    }
 
-    renderer.render(scene, camera)
+    renderer.render(scene, camera);
+
+    {
+      // 左下のスピードメーター欄　更新
+      var speed = vehicle.getSpeed();
+      speed = parseInt(speed*10)/10.0;
+      setSpeed(speed);
+    }
+
+    requestAnimationFrame(animate)
   }
 
   animate();
+};
+
+function setSpeed(speed) {
+    const canvas = document.getElementById('speedCanvas');
+    const ctxspd = canvas.getContext('2d');
+    canvas.width = 200;
+    canvas.height = 40;
+    ctxspd.font = '20px bold sans-serif';
+    ctxspd.textBaseline = 'alphabetic';
+    ctxspd.textAlign = 'start';
+    ctxspd.fillStyle = 'white';
+    ctxspd.fillText("speed: "+speed, 20, 22);
 };

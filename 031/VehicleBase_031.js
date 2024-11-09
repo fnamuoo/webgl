@@ -63,6 +63,7 @@ class VehicleBase {
             position: new CANNON.Vec3(0, 1, 0),
         })
         const viChassisGeo = new THREE.BoxGeometry(4, 1, 1.6);
+        // const viChassisMtr = new THREE.MeshNormalMaterial();
         const viChassisMtr = new THREE.MeshNormalMaterial({wireframe:true});
         this.viChassisMesh_ = new THREE.Mesh(viChassisGeo, viChassisMtr);
         this.viChassisMesh_.position.copy(this.moChassisBody_.position);
@@ -117,6 +118,8 @@ class VehicleBase {
         // Add the wheel bodies
         const moWheelMtr = new CANNON.Material('wheel');
         const moWheelBodies = [];
+        // const viWheelMeshes = [];
+        // const viWheelGeos = [];
         this.moVehicle_.wheelInfos.forEach((wheel) => {
             const moWheelShape = new CANNON.Cylinder(wheel.radius, wheel.radius, wheel.radius*0.8, 20)
             const moWheelBody = new CANNON.Body({
@@ -130,11 +133,13 @@ class VehicleBase {
             moWheelBodies.push(moWheelBody)
             const viWheelGeo = new THREE.CylinderGeometry(wheel.radius, wheel.radius, wheel.radius*0.8, 20);
             viWheelGeo.rotateX(Math.PI/2);
+            //    const viWheelMtr = new THREE.MeshNormalMaterial();
             const viWheelMtr = new THREE.MeshNormalMaterial({wireframe:true});
             const viWheelMesh = new THREE.Mesh(viWheelGeo, viWheelMtr);
             this.scene_.add(viWheelMesh);
             this.world_.addBody(moWheelBody)
             this.viWheelMeshes_.push(viWheelMesh);
+            // this.viWheelGeos_.push(viWheelGeo);
         })
 
         // Update the wheel bodies
@@ -152,6 +157,8 @@ class VehicleBase {
         const wheel_ground = new CANNON.ContactMaterial(moWheelMtr, this.moGroundMtr_, {
             friction: this.wheelFriction_,  // 0.9,  // 摩擦係数(def=0.3)
             restitution: 0, // 0,  // 反発係数 (def=0.3)
+            // contactEquationStiffness: 1000,  // 剛性(def=1e7) 値大:=物体が変形しにくく / 値小:=沈んでしまう
+            // contactEquationStiffness: 1e-2,  // 剛性(def=1e7) 値大:=物体が変形しにくく / 値小:=沈んでしまう
             contactEquationStiffness: 1e7,  // 剛性(def=1e7) 値大:=物体が変形しにくく / 値小:=沈んでしまう
         })
         this.world_.addContactMaterial(wheel_ground)
@@ -173,9 +180,6 @@ class VehicleBase {
         this.moVehicle_.chassisBody.position.set(x, y, z)
         const carInitQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), roty*Math.PI);
         this.moVehicle_.chassisBody.quaternion.copy(carInitQuat);
-        // 速度、角速度を初期化しておく
-        this.moVehicle_.chassisBody.velocity = new CANNON.Vec3(0, 0, 0);
-        this.moVehicle_.chassisBody.angularVelocity = new CANNON.Vec3(0, 0, 0);
     }
 
     setPosition2(x, y, z) {
@@ -271,6 +275,9 @@ class VehicleBase {
         }
     }
 
+    getSpeed() {
+        return Math.abs(this.moVehicle_.currentVehicleSpeedKmHour);
+    }
 }
 
 class VehicleFR00 extends VehicleBase {
@@ -291,6 +298,8 @@ class VehicleFR00 extends VehicleBase {
 }
 
 export class VehicleFRBase extends VehicleBase {
+    // エンジン出力
+    // maxForce_ = 200;
 }
 
 export class VehicleFR01 extends VehicleFRBase {
@@ -332,7 +341,7 @@ export class VehicleFR03 extends VehicleBase {
 
 
 export class VehicleFR11 extends VehicleFRBase {
-    // 低出力 ドリフト仕様
+  // 低出力 ドリフト仕様
     // スライドフラグ？
     sliding_ = true;
 
@@ -385,6 +394,7 @@ export class VehicleFFBase extends VehicleBase {
             position: new CANNON.Vec3(0, 1, 0),
         })
         const viChassisGeo = new THREE.BoxGeometry(4, 1, 1.6);
+        // const viChassisMtr = new THREE.MeshNormalMaterial();
         const viChassisMtr = new THREE.MeshStandardMaterial({color:0xff8080, transparent: true, opacity: 0.9 });
 
         this.viChassisMesh_ = new THREE.Mesh(viChassisGeo, viChassisMtr);
@@ -412,6 +422,7 @@ export class VehicleFFBase extends VehicleBase {
         this.moVehicle_.applyEngineForce(0, 1)
     }
 }
+
 
 export class VehicleFF01 extends VehicleFFBase {
     // エンジン出力
@@ -550,7 +561,6 @@ export class Vehicle4WD02 extends Vehicle4WDBase {
     //  強：曲がる。オーバーステア
     frictionSlipF_ = 5; // 3;
     frictionSlipR_ = 5; // 3;
-
 }
 
 export class Vehicle4WD11 extends Vehicle4WDBase {
@@ -608,7 +618,6 @@ export class RigidVehicle01 {
     moChassisBody_;
     viChassisMesh_;
     viWheelMeshes_ = [];
-    // viWheelGeos_ = [];
     sidebrake_ = 0;
 
     // 重量
@@ -667,10 +676,6 @@ export class RigidVehicle01 {
         this.scene_.add(this.viChassisMesh_);
 
         // Create the vehicle
-        // this.moVehicle_ = new CANNON.RaycastVehicle({
-        //     chassisBody: this.moChassisBody_,
-        //     sliding: this.sliding_,
-        // })
         this.moVehicle_ = new CANNON.RigidVehicle({
             chassisBody: this.moChassisBody_,
         })
@@ -739,8 +744,6 @@ export class RigidVehicle01 {
         const wheel_ground = new CANNON.ContactMaterial(moWheelMtr, this.moGroundMtr_, {
             friction: this.wheelFriction_,  // 0.9,  // 摩擦係数(def=0.3)
             restitution: 0, // 0,  // 反発係数 (def=0.3)
-            // contactEquationStiffness: 1000,  // 剛性(def=1e7) 値大:=物体が変形しにくく / 値小:=沈んでしまう
-            // contactEquationStiffness: 1e-2,  // 剛性(def=1e7) 値大:=物体が変形しにくく / 値小:=沈んでしまう
             contactEquationStiffness: 1e7,  // 剛性(def=1e7) 値大:=物体が変形しにくく / 値小:=沈んでしまう
         })
         this.world_.addContactMaterial(wheel_ground)
@@ -766,8 +769,6 @@ export class RigidVehicle01 {
 
     // 後輪駆動(FR)
     keydown_ArrowUp() {
-        // this.moVehicle_.applyEngineForce(-this.maxForce_, 2)
-        // this.moVehicle_.applyEngineForce(-this.maxForce_, 3)
         this.moVehicle_.setWheelForce(this.maxForce_, 2)
         this.moVehicle_.setWheelForce(-this.maxForce_, 3)
     }
@@ -803,12 +804,12 @@ export class RigidVehicle01 {
         this.moVehicle_.setSteeringValue(0, 1)
     }
 
-    keydown_brake() {
+    keydown_break() {
     }
-    keyup_brake() {
+    keyup_break() {
     }
 
-    keydown_sidebrake() {
+    keydown_sidebreak() {
     }
     keydown_resetPosture() {
         // 車をひっくり返したいけど、シャーシ・ホイルを同時に指定する必要あり。面倒なので保留に
@@ -850,4 +851,22 @@ export class RigidVehicle01 {
             this.viWheelMeshes_[i].quaternion.copy(wheelBody.quaternion);
         });
     }
+
 }
+
+/*
+
+- cannon-es docs
+https://pmndrs.github.io/cannon-es/docs/
+https://pmndrs.github.io/cannon-es/
+
+- めちゃくちゃわかりやすい図
+  https://github.com/pmndrs/use-cannon/discussions/90
+    point-to-point
+    spring
+    hinge
+    cone twist
+    slider
+    6 DoF
+
+*/

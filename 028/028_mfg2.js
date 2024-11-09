@@ -542,11 +542,11 @@ window.onload = async() => {
         break
 
       case 'b':
-        vehicle.keydown_break();
+        vehicle.keydown_brake();
         break
 
       case 'n':
-        vehicle.keydown_sidebreak();
+        vehicle.keydown_sidebrake();
         break
 
       case 'c':
@@ -621,7 +621,7 @@ window.onload = async() => {
         break
 
       case 'b':
-        vehicle.keyup_break();
+        vehicle.keyup_brake();
         break
 
     }

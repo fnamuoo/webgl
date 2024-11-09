@@ -225,20 +225,20 @@ class VehicleBase {
         this.moVehicle_.setSteeringValue(0, 1)
     }
 
-    keydown_break() {
+    keydown_brake() {
         this.moVehicle_.setBrake(this.brakeForceF_, 0)
         this.moVehicle_.setBrake(this.brakeForceF_, 1)
         this.moVehicle_.setBrake(this.brakeForceR_, 2)
         this.moVehicle_.setBrake(this.brakeForceR_, 3)
     }
-    keyup_break() {
+    keyup_brake() {
         this.moVehicle_.setBrake(0, 0)
         this.moVehicle_.setBrake(0, 1)
         this.moVehicle_.setBrake(0, 2)
         this.moVehicle_.setBrake(0, 3)
     }
 
-    keydown_sidebreak() {
+    keydown_sidebrake() {
         this.sidebrake_ = (this.sidebrake_+1) % 2
         if (this.sidebrake_) {
             this.moVehicle_.setBrake(this.brakeForceR_, 2)
@@ -803,12 +803,12 @@ export class RigidVehicle01 {
         this.moVehicle_.setSteeringValue(0, 1)
     }
 
-    keydown_break() {
+    keydown_brake() {
     }
-    keyup_break() {
+    keyup_brake() {
     }
 
-    keydown_sidebreak() {
+    keydown_sidebrake() {
     }
     keydown_resetPosture() {
         // 車をひっくり返したいけど、シャーシ・ホイルを同時に指定する必要あり。面倒なので保留に
