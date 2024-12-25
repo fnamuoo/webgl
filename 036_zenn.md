@@ -4,7 +4,7 @@
 
 スロープトイ
 
-![](036/pic/036_ss_00.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/7a0f72e59836-20241225.jpg)
 
 ソース
 
@@ -29,8 +29,7 @@ https://github.com/fnamuoo/webgl/blob/main/036
 物理エンジンのサンプルでみんなが一度はつくるであろう「物体の落下」。
 これに着目してスロープトイなるものにチャレンジしました。
 
-スロープトイは子供（幼児）用の知育玩具で、
-ボール・車・コマなどをスロープの上から転がして転がる様子や音を楽しむおもちゃです。
+スロープトイは子供（幼児）用の知育玩具で、ボール・車・コマなどをスロープの上から転がして転がる様子や音を楽しむおもちゃです。
 
 ## やったこと
 
@@ -112,99 +111,96 @@ https://github.com/fnamuoo/webgl/blob/main/036
 
 学校にあるやつです。
 
-![](036/pic/036_ss_1.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/a90428ead56f-20241225.jpg)
 
-[ソース](036/036_1.html) 
+https://github.com/fnamuoo/webgl/blob/main/036/036_1.js
 
 ### クネクネバーン
 
 単純に斜めに落ちていくだけのものです。
 模してみたら、デパートのエスカレータっぽくなりましたｗ
 
-![](036/pic/036_ss_2.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/fff85d48a76f-20241225.jpg)
 
-[ソース](036/036_2.html) 
+https://github.com/fnamuoo/webgl/blob/main/036/036_2.js
 
 ### ピラミッドの外周ダウンヒル
 
 カーブと傾斜を使ったサンプルになります。
 
-![](036/pic/036_ss_3.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/76335df80733-20241225.jpg)
 
-[ソース](036/036_3.html) 
+https://github.com/fnamuoo/webgl/blob/main/036/036_3.js
 
 ### 漏斗のツリー
 
 漏斗をつかって、ツリーをイメージしてみました。
 漏斗自体に傾斜があまりついていないのと外枠がないのでこぼれまくりです。
 
-![](036/pic/036_ss_4.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/5c1112b6f8a5-20241225.jpg)
 
-[ソース](036/036_4.html) 
+https://github.com/fnamuoo/webgl/blob/main/036/036_4.js
 
 ### フォークのピラミッド
 
 フォーク（２分岐）をピラミッド状に並べたらアミダくじっぽくなりました。
 
-![](036/pic/036_ss_5.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/3ed40aec6277-20241225.jpg)
 
-[ソース](036/)
-
+https://github.com/fnamuoo/webgl/blob/main/036/036_5.js
 
 ### うず潮
 
 ループ（水平）やうず巻を使って、うず潮っぽく。
 
-![](036/pic/036_ss_6.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/db51111cd030-20241225.jpg)
 
-[ソース](036/)
+https://github.com/fnamuoo/webgl/blob/main/036/036_6.js
 
 ### ループ橋
 
 ループ橋ってなぜかワクワクするよね。  
 ループの上りの加速器の調整が難しく、ボールが吹っ飛んでしまったり、逆に団子状態で詰まったり。
 
-![](036/pic/036_ss_7.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/647cfdb5aef8-20241225.jpg)
 
-[ソース](036/)
+https://github.com/fnamuoo/webgl/blob/main/036/036_7.js
 
 ### エレベータと風車
 
 風車（動力あり）を組み合わせることで、エレベータと似たことが出来そうだと思ったのがきっかけです。  
-風車で持ち上げるところにボールが集まりすぎるとボールを噛んで止まってしまうので、
-入口付近の調整用に水平の風車を置いています。
+風車で持ち上げるところにボールが集まりすぎるとボールを噛んで止まってしまうので、入口付近の調整用に水平の風車を置いています。
 
-![](036/pic/036_ss_8.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/7b48e0cc99c8-20241225.jpg)
 
-[ソース](036/)
+https://github.com/fnamuoo/webgl/blob/main/036/036_8.js
 
 ### レースコース（１車線）
 
 RaycastVehicleで世話になったレースコースを模してみました。
 
-![](036/pic/036_ss_9.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/a762e80f2f28-20241225.jpg)
 
-[ソース](036/)
+https://github.com/fnamuoo/webgl/blob/main/036/036_9.js
 
 ### レースコース（２車線）
 
 複数レーンで競っている感じを出したくて２車線に。
 臨場感がちょっと今ひとつ。
 
-![](036/pic/036_ss_10.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/6eef38569338-20241225.jpg)
 
-[ソース](036/)
+https://github.com/fnamuoo/webgl/blob/main/036/036_10.js
 
 ### レースコース（３車線）
 
 ミニ四駆っぽくするなら３レーン、４レーンあたりまえだよね。
 ということで３レーン、ロングコースを作ってみました。
-もう一回り径の大きなカーブが欲しくなりますが、
-誤魔化しつつレイアウトしてます。
+もう一回り径の大きなカーブが欲しくなりますが、誤魔化しつつレイアウトしてます。
 
-![](036/pic/036_ss_11.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/379b80dffd40-20241225.jpg)
 
-[ソース](036/)
+https://github.com/fnamuoo/webgl/blob/main/036/036_11.js
 
 ### ジェットコースター
 
@@ -212,17 +208,14 @@ RaycastVehicleで世話になったレースコースを模してみました。
 落下の勢いでループ（縦）が回れるかと期待したのですが、思ったよりスピードが乗らない／加速しないとダメですね。
 そして上りではコースアウトが頻出。ドカンと加速するより細々と加速したほうが安定しそうです。
 
-![](036/pic/036_ss_12.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/aeec48423115-20241225.jpg)
 
-[ソース](036/)
-
+https://github.com/fnamuoo/webgl/blob/main/036/036_12.js
 
 ## 全体総括
 
 物理的には実現不可能なコースを作れるのがいいですね。
-
-（加速器）のお陰でコースの幅が広がり、
-坂道を上るという悪ノリしたコースも作れました。うん、満足。
+（加速器）のお陰でコースの幅が広がり、坂道を上るという悪ノリしたコースも作れました。うん、満足。
 
 次回は部品について技術的なお話をしたいとおもいます。
 
