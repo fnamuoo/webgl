@@ -1,0 +1,12060 @@
+// mode:javascript
+
+import * as THREE from "three";
+import * as CANNON from "cannon";
+
+let world;
+let scene;
+
+
+// 定数
+const PI  = Math.PI;
+const PI_ = Math.PI/2;
+const PI2 = Math.PI*2;
+
+// ブロックサイズ
+const blockSize = 10;
+const blockSize_ = blockSize/2;
+
+// ボール半径
+const ballR = 1;
+
+// レール型オブジェクトのパラメータ
+//   基本、直方系の棒でレールを表現
+// レールの幅
+const railw = 0.2;
+// レールの幅・間隔
+const railIntr = 1.5;
+const railIntr_ = railIntr/2;
+// レールの余白 (=2)
+const railPad = (blockSize-railIntr)/2;
+const railPad_ = railPad/2;
+// レールを45度傾けた場合の..
+const blockSizeR45 = blockSize*1.414;
+const blockSizeR45_ = blockSizeR45/2;
+// レールの幅・間隔
+const railIntrR45 = railIntr*1.414;
+const railIntrR45_ = railIntrR45/2;
+// レールの余白 (=..)
+const railPadR45 = (blockSize-railIntrR45)/2;
+const railPadR45_ = railPadR45/2;
+// ガードレールの高さ
+const gardH = railIntr_;
+
+// 凹(concave)オブジェクトのパラメータ
+//  -基本、薄い板で三方を囲んで表現
+// 凹(concave) 薄い板の厚み
+const cont = 0.1;
+const cont_ = cont/2;
+// 凹(concave) 溝の幅の半分
+const conw_ = 1.05 + cont_;
+const conw__ = conw_ / 2;  // concave の高さで利用
+// 凹(concave) 溝の幅
+const conw = conw_ * 2;
+
+// moBallMtr.restitution = 1;  // 反発係数 1:跳ねやすい  /  0:跳ねない
+const moBallMtr = new CANNON.Material({name: 'ball', restitution: 0});
+const moRailMtr = new CANNON.Material({name: 'rail'});
+
+function rnorm() {
+  return Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+}
+export function init0(world_, scene_) {
+  world = world_;
+  scene = scene_;
+}
+
+export function init(world_, scene_, dataInfoList) {
+  init0(world_, scene_);
+
+  dataInfoList.forEach(dinfo => {
+    var dtype = dinfo[0];
+    var x = dinfo[1];
+    var y = dinfo[2];
+    var z = dinfo[3];
+    var rot = (dinfo.length >= 5) ? dinfo[4] : undefined;
+    if (dtype == "ball") {
+      Ball_00_glb(x, y, z);
+    } else if (dtype == "rail_st") {
+      Rail_04(x, y, z, rot);
+    } else if (dtype == "rail_st50") {
+      Rail_23(x, y, z, rot);
+    } else if (dtype == "rail_st90") {
+      Rail_25(x, y, z, rot);
+    } else if (dtype == "rail_st100") {
+      Rail_14(x, y, z, rot);
+    } else if (dtype == "rail_st110") {
+      Rail_26(x, y, z, rot);
+
+    } else if (dtype == "rail_st_R45") { // 直線（ななめR45)
+      Rail_10(x, y, z, rot);
+    } else if (dtype == "rail_st_R45_50") { // 直線（ななめR45)
+      Rail_41(x, y, z, rot);
+    } else if (dtype == "rail_st_R45_100") { // 直線（ななめR45)
+      Rail_37(x, y, z, rot);
+    } else if (dtype == "rail_st_R45_r") { // 直線（ななめR45)・反転
+      Rail_11(x, y, z, rot);
+    } else if (dtype == "rail_st_R45_50_r") { // 直線（ななめR45)・反転
+      Rail_42(x, y, z, rot);
+    } else if (dtype == "rail_st_R45_100_r") { // 直線（ななめR45)・反転
+      Rail_38(x, y, z, rot);
+    } else if (dtype == "rail_st_R45_2") { // 直線（ななめR45)
+      Rail_11_2(x, y, z, rot);
+
+    } else if (dtype == "rail_st_slopeH10L10") { // 坂・直線
+      Rail_18(x, y, z, rot);
+    } else if (dtype == "rail_st_slopeH10L20") { // 坂・直線
+      Rail_05(x, y, z, rot);
+    } else if (dtype == "rail_st_slopeH10L30") { // 坂・直線
+      Rail_19(x, y, z, rot);
+    } else if (dtype == "rail_st_slopeH10L40") { // 坂・直線
+      Rail_20(x, y, z, rot);
+    } else if (dtype == "rail_st_slopeH10L50") { // 坂・直線
+      Rail_21(x, y, z, rot);
+    } else if (dtype == "rail_st_slopeH10L100") { // 坂・直線
+      Rail_22(x, y, z, rot);
+
+    } else if (dtype == "rail_st_slopeH20L20") { // 坂・直線
+      Rail_27(x, y, z, rot);
+    } else if (dtype == "rail_st_slopeH40L20") { // 坂・直線
+      Rail_28(x, y, z, rot);
+    } else if (dtype == "rail_st_slopeH60L20") { // 坂・直線
+      Rail_29(x, y, z, rot);
+
+    } else if (dtype == "rail_st_slope") { // 坂・直線
+      Rail_05(x, y, z, rot);
+    } else if (dtype == "rail_st_slope_arc") { // 坂・曲線
+      Rail_06(x, y, z, rot);
+    } else if (dtype == "rail_st_slope_arc_s") {  // 坂・曲線・高さ半分
+      Rail_06_2(x, y, z, rot);
+    } else if (dtype == "rail_st_shift_line") {   // 直進（ラインをずらす）
+      Rail_04_2(x, y, z, rot);
+    } else if (dtype == "rail_st_shift_line2") {  // 直進（ラインをずらす・反転）
+      Rail_04_3(x, y, z, rot);
+    } else if (dtype == "rail_arc10") {  // ９０度カーブ(s)
+      Rail_07(x, y, z, rot);
+    } else if (dtype == "rail_arc20") {  // ９０度カーブ(m)
+      Rail_08(x, y, z, rot);
+    } else if (dtype == "rail_arc30") {  // ９０度カーブ(l)
+      Rail_09(x, y, z, rot);
+    } else if (dtype == "rail_arc40") {  // ９０度カーブ
+      Rail_15(x, y, z, rot);
+    } else if (dtype == "rail_arc50") {  // ９０度カーブ
+      Rail_16(x, y, z, rot);
+    } else if (dtype == "rail_arc90") {  // ９０度カーブ
+      Rail_24(x, y, z, rot);
+    } else if (dtype == "rail_arc100") {  // ９０度カーブ
+      Rail_17(x, y, z, rot);
+    } else if (dtype == "rail_arc110") {  // ９０度カーブ
+      Rail_30(x, y, z, rot);
+
+    } else if (dtype == "rail_arc200") {  // ９０度カーブ
+      Rail_39(x, y, z, rot);
+    } else if (dtype == "rail_arc300") {  // ９０度カーブ
+      Rail_40(x, y, z, rot);
+
+    } else if (dtype == "rail_arc40v10") {  // ９０度カーブ＋アップ
+      Rail_31(x, y, z, rot);
+    } else if (dtype == "rail_arc40v10r") {  // ９０度カーブ＋アップ
+      Rail_32(x, y, z, rot);
+    } else if (dtype == "rail_arc50v10") {  // ９０度カーブ＋アップ
+      Rail_33(x, y, z, rot);
+    } else if (dtype == "rail_arc50v10r") {  // ９０度カーブ＋アップ
+      Rail_34(x, y, z, rot);
+    } else if (dtype == "rail_arc60v10") {  // ９０度カーブ＋アップ
+      Rail_35(x, y, z, rot);
+    } else if (dtype == "rail_arc60v10r") {  // ９０度カーブ＋アップ
+      Rail_36(x, y, z, rot);
+
+    } else if (dtype == "rail_arc_s") {  // ９０度カーブ(s)
+      Rail_07(x, y, z, rot);
+    } else if (dtype == "rail_arc_m") {  // ９０度カーブ(m)
+      Rail_08(x, y, z, rot);
+    } else if (dtype == "rail_arc_m2") {  // ９０度カーブ(m):緻密さを10倍に
+      Rail_08_2(x, y, z, rot);
+    } else if (dtype == "rail_arc_l") {  // ９０度カーブ(l)
+      Rail_09(x, y, z, rot);
+
+    } else if (dtype == "rail_arc_R45") {  // 直線（ななめR45）
+      Rail_12(x, y, z, rot);
+    } else if (dtype == "rail_arc_R45_r") {  // 直線（ななめR45反転）
+      Rail_13(x, y, z, rot);
+    } else if (dtype == "join_R45") {  // 合流：卜型
+      Join_00(x, y, z, rot);
+    } else if (dtype == "join_R45_r") {  // 合流：卜型・反転
+      Join_01(x, y, z, rot);
+    } else if (dtype == "funnel_sq") { // 漏斗、渦巻
+      Funnel_00(x, y, z, rot);
+    } else if (dtype == "funnel_sq_r") { // 漏斗、渦巻(逆巻き)
+      Funnel_01(x, y, z, rot);
+    } else if (dtype == "funnel_plt_s") {  // 漏斗、平板
+      Funnel_02(x, y, z, rot);
+    } else if (dtype == "funnel_plt_m") {
+      Funnel_03(x, y, z, rot);
+    } else if (dtype == "funnel_plt_m_c") {  // 漏斗、平板（隅に穴
+      Funnel_04(x, y, z, rot);
+    } else if (dtype == "up_s") {      // ９０度アップ
+      Up_00(x, y, z, rot);
+    } else if (dtype == "updown_s") {  // １８０度アップ (半径:blockSize-2=8)
+      UpDown_00(x, y, z, rot);
+    } else if (dtype == "updown_s2") {  // １８０度アップ (半径:blockSize)
+      UpDown_01(x, y, z, rot);
+    } else if (dtype == "down_s") {    // ９０度ダウン
+      Down_00(x, y, z, rot);
+
+    } else if (dtype == "vloop_s") {   // 縦ループ
+      VLoop_00(x, y, z, rot);
+    } else if (dtype == "vloop_m") {
+      VLoop_01(x, y, z, rot);
+    } else if (dtype == "hloop_s") {   // 横ループ
+      HLoop_00(x, y, z, rot);
+    } else if (dtype == "hloop_m") {
+      HLoop_01(x, y, z, rot);
+
+    } else if (dtype == "fork_v") {
+      ForkV_00(x, y, z, rot);
+    } else if (dtype == "fork_v2") {
+      ForkV_01(x, y, z, rot);
+    } else if (dtype == "fork_h") {
+      ForkH_00(x, y, z, rot);
+    } else if (dtype == "cross") {
+      Cross_00(x, y, z, rot);
+    } else if (dtype == "cross_R45") {
+      Cross_01(x, y, z, rot);
+    } else if (dtype == "cross2") {  // レール　十字
+      Cross_02(x, y, z, rot);
+    } else if (dtype == "cross2_R45") {
+      Cross_03(x, y, z, rot);
+    } else if (dtype == "windmill_h") {
+      Windmill_00(x, y, z, rot);
+    } else if (dtype == "windmill_v") {
+      Windmill_01(x, y, z, rot);
+    } else if (dtype == "windmill_h2") {
+      Windmill_02(x, y, z, rot);
+    } else if (dtype == "windmill_v2") {
+      Windmill_03(x, y, z, rot);
+    } else if (dtype == "windmill_h3") {
+      Windmill_04(x, y, z, rot);
+    } else if (dtype == "windmill_v3") {
+      Windmill_05(x, y, z, rot);
+
+    } else if (dtype == "tree_00") {
+      Tree_00(x, y, z, rot);
+    } else if (dtype == "tree_01") {
+      Tree_01(x, y, z, rot);
+    } else if (dtype == "tree_02") {
+      Tree_02(x, y, z, rot);
+
+    } else if (dtype == "pole_01_h50") {
+      Pole_01(x, y, z, rot);
+    } else if (dtype == "pole_01_h100") {
+      Pole_02(x, y, z, rot);
+    } else if (dtype == "pole_02_h20") {
+      Pole_03(x, y, z, rot);
+    } else if (dtype == "pole_02_h40") {
+      Pole_04(x, y, z, rot);
+    } else if (dtype == "pole_02_h60") {
+      Pole_05(x, y, z, rot);
+
+    } else if (dtype == "plate_01_30x1x10") {
+      Plate_01(x, y, z, rot);
+    } else if (dtype == "plate_01_50x1x10") {
+      Plate_02(x, y, z, rot);
+    } else if (dtype == "plate_01_70x1x10") {
+      Plate_03(x, y, z, rot);
+
+    } else if (dtype == "box_01_10x10x10") {
+      Box_01(x, y, z, rot);
+    } else if (dtype == "box_01_30x30x30") {
+      Box_02(x, y, z, rot);
+    } else if (dtype == "box_01_50x50x50") {
+      Box_03(x, y, z, rot);
+
+    } else if (dtype == "fog_01_100x100x100") {
+      Fog_01(x, y, z, rot);
+
+    // } else if (dtype == "ring_01_10x10x10") {
+    //     Ring_01(x, y, z, rot);
+
+    } else if (dtype == "ring_02_10x10x10") {
+      Ring_11(x, y, z, rot);
+    } else if (dtype == "ring_02_20x20x10") {
+      Ring_12(x, y, z, rot);
+    } else if (dtype == "ring_02_30x30x10") {
+      Ring_13(x, y, z, rot);
+    } else if (dtype == "ring_02_40x40x10") {
+      Ring_14(x, y, z, rot);
+    } else if (dtype == "ring_02_50x50x10") {
+      Ring_15(x, y, z, rot);
+
+    // //////////////////////////////////////////////////
+
+    } else if (dtype == "con_st") {
+      con_st(x, y, z, rot);
+    } else if (dtype == "con_st50") {
+      con_st50(x, y, z, rot);
+    } else if (dtype == "con_st100") {
+      con_st100(x, y, z, rot);
+
+    } else if (dtype == "con_st_slopeH10L20") {
+      con_st_slopeH10L20(x, y, z, rot);
+
+    } else if (dtype == "con_arc20") {
+      con_arc20(x, y, z, rot);
+
+    // //////////////////////////////////////////////////
+    // !!
+        // 直線
+    } else if (dtype == "tube_st") {
+      tube_st(x, y, z, rot);
+    } else if (dtype == "tube_st20") {
+      tube_st20(x, y, z, rot);
+    } else if (dtype == "tube_st30") {
+      tube_st30(x, y, z, rot);
+    } else if (dtype == "tube_st40") {
+      tube_st40(x, y, z, rot);
+    } else if (dtype == "tube_st50") {
+      tube_st50(x, y, z, rot);
+    } else if (dtype == "tube_st100") {
+      tube_st100(x, y, z, rot);
+    } else if (dtype == "tube_st200") {
+      tube_st200(x, y, z, rot);
+
+        // 直線・ななめ 45度
+    } else if (dtype == "tube_st05_r45") {
+      tube_st05_r45(x, y, z, rot);
+    } else if (dtype == "tube_st10_r45") {
+      tube_st10_r45(x, y, z, rot);
+    } else if (dtype == "tube_st10_r45_r") {
+      tube_st10_r45_r(x, y, z, rot);
+    } else if (dtype == "tube_st50_r45") {
+      tube_st50_r45(x, y, z, rot);
+    } else if (dtype == "tube_st50_r45_r") {
+      tube_st50_r45_r(x, y, z, rot);
+    } else if (dtype == "tube_st100_r45") {
+      tube_st100_r45(x, y, z, rot);
+    } else if (dtype == "tube_st100_r45_r") {
+      tube_st100_r45_r(x, y, z, rot);
+
+        // 直線とつなぐななめ（横方向のズレ）
+    } else if (dtype == "tube_st_slashL20W10") {
+      tube_st_slashL20W10(x, y, z, rot);
+    } else if (dtype == "tube_st_slashL20W10_r") {
+      tube_st_slashL20W10_r(x, y, z, rot);
+    } else if (dtype == "tube_st_slashL30W10") {
+      tube_st_slashL30W10(x, y, z, rot);
+    } else if (dtype == "tube_st_slashL30W10_r") {
+      tube_st_slashL30W10_r(x, y, z, rot);
+
+        //　直線＋垂直（直線
+    } else if (dtype == "tube_st_slopeH03L20") {
+      tube_st_slopeH03L20(x, y, z, rot);
+    } else if (dtype == "tube_st_slopeH05L20") {
+      tube_st_slopeH05L20(x, y, z, rot);
+    } else if (dtype == "tube_st_slopeH10L20") {
+      tube_st_slopeH10L20(x, y, z, rot);
+
+        //　直線＋垂直（カーブ
+    } else if (dtype == "tube_st_slopeArcH03L20") {
+      tube_st_slopeArcH03L20(x, y, z, rot);
+    } else if (dtype == "tube_st_slopeArcH05L20") {
+      tube_st_slopeArcH05L20(x, y, z, rot);
+    } else if (dtype == "tube_st_slopeArcH10L20") {
+      tube_st_slopeArcH10L20(x, y, z, rot);
+    } else if (dtype == "tube_st_slopeArcH10L30") {
+      tube_st_slopeArcH10L30(x, y, z, rot);
+    } else if (dtype == "tube_st_slopeArcH10L50") {
+      tube_st_slopeArcH10L50(x, y, z, rot);
+
+        // ９０度カーブ
+    } else if (dtype == "tube_arc10") {
+      tube_arc10(x, y, z, rot);
+    } else if (dtype == "tube_arc20") {
+      tube_arc20(x, y, z, rot);
+    } else if (dtype == "tube_arc30") {
+      tube_arc30(x, y, z, rot);
+    } else if (dtype == "tube_arc40") {
+      tube_arc40(x, y, z, rot);
+    } else if (dtype == "tube_arc50") {
+      tube_arc50(x, y, z, rot);
+    } else if (dtype == "tube_arc60") {
+      tube_arc60(x, y, z, rot);
+    } else if (dtype == "tube_arc90") {
+      tube_arc90(x, y, z, rot);
+    } else if (dtype == "tube_arc100") {
+      tube_arc100(x, y, z, rot);
+
+        // 直線　から　ななめ 45度　の変換
+    } else if (dtype == "tube_arc20_r45") {
+      tube_arc20_r45(x, y, z, rot);
+    } else if (dtype == "tube_arc20_r45_r") {
+      tube_arc20_r45_r(x, y, z, rot);
+
+    }
+  });
+
+
+  const ball_rail = new CANNON.ContactMaterial(moBallMtr, moRailMtr, {
+    friction: 0.0001,  // 摩擦係数(def=0.3)
+    // restitution: 0.3,  // 反発係数 (def=0.3)
+    restitution: 0.01,  // 反発係数 (def=0.3) 反発が小さい方がレールがガタガタでもそれなりに滑ってくれる
+    // restitution: 0.001,  // 反発係数 (def=0.3) 反発が小さい方がレールがガタガタでもそれなりに滑ってくれる
+    contactEquationStiffness: 1e7,  // 剛性(def=1e7) 値大:=物体が変形しにくく / 値小:=沈んでしまう
+  })
+  world.addContactMaterial(ball_rail)
+}
+
+var moBallBodyVecGlb = [];
+var viBallMeshVecGlb = [];
+
+export function glb_data() {
+  return {moBallBodyVecGlb, viBallMeshVecGlb};
+}
+
+export class Source_00 {
+  // 球を生成する源泉
+  //   見た目は箱にしておく
+  // scene_;
+  // world_;
+  x_;
+  y_;
+  z_;
+  nmaxball_;  // 最大数
+  p_;   // 発生確率
+  ballType_;
+  pg_; // 中心位置 (x,y,z)をvec3 化したもの
+  rndposi_;  // ランダム位置での生成
+  moBallBodyVec_ = [];
+  viBallMeshVec_ = [];
+
+  // constructor(scene, world, x, y, z, nmaxball, p, ballType) {
+  constructor(x, y, z, nmaxball, p, ballType, rndposi) {
+    let adjx = 5; let adjy = 5; let adjz = 5;
+    x += adjx; y += adjy; z += adjz;
+    // this.scene_ = scene;
+    // this.world_ = world;
+    this.x_ = x;
+    this.y_ = y;
+    this.z_ = z;
+    this.nmaxball_ = nmaxball;
+    this.p_ = p;
+    this.ballType_ = ballType;
+    this.rndposi_ = rndposi;
+    this.pg_ = new CANNON.Vec3(x, y, z);
+    this.init()
+  }
+
+  init() {
+    let sx = 10; let sy = 10; let sz = 10;
+    const viSrc2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viSrc2Mtr = new THREE.MeshNormalMaterial({transparent: true, opacity: 0.8});
+    const viSrc2Mesh = new THREE.Mesh(viSrc2Geo, viSrc2Mtr);
+    viSrc2Mesh.position.copy(new THREE.Vector3(this.x_, this.y_, this.z_));
+    scene.add(viSrc2Mesh);
+  }
+
+  pop() {
+    // ボールの発生
+    if (this.moBallBodyVec_.length < this.nmaxball_) {
+      if (Math.random() < this.p_) {
+        this.popforce();
+      }
+    }
+  }
+
+  popforce() {
+    // ボールの発生（強制）
+    let bfind = false; // 近傍にボールがあるかの判定
+    for (let i = 0; i < this.moBallBodyVec_.length; ++i) {
+      if (this.moBallBodyVec_[i].position.distanceTo(this.pg_) < 10) {
+        bfind = true;
+        break;
+      }
+    }
+    if (bfind) {
+      // 近傍にボールがあるのでskip
+      return;
+    }
+    // 座標にちょっと揺らぎを
+    // let x = this.x_ + rnorm()/2; let y = this.y_ + rnorm()/2; let z = this.z_ + rnorm()/2;
+//    let x = this.x_ + rnorm()/4; let y = this.y_ + rnorm()/4; let z = this.z_ + rnorm()/4;
+    let x = this.x_; let y = this.y_; let z = this.z_;
+    if ((this.rndposi_ == undefined) || (this.rndposi_ == true)) {
+      x = this.x_ + rnorm()/4; y = this.y_ + rnorm()/4; z = this.z_ + rnorm()/4;
+    }
+    if (this.ballType_ == 0) {
+      const {moBallBody, viBallMesh} = Ball_00(x, y, z);
+      this.moBallBodyVec_.push(moBallBody);
+      this.viBallMeshVec_.push(viBallMesh);
+      // イベントリスナ―内から参照できるよう this を持たせておく
+      moBallBody.src_ = this;
+    } else if (this.ballType_ == 1) {
+      const {moBallBody, viBallMesh} = Ball_01(x, y, z);
+      this.moBallBodyVec_.push(moBallBody);
+      this.viBallMeshVec_.push(viBallMesh);
+      // イベントリスナ―内から参照できるよう this を持たせておく
+      moBallBody.src_ = this;
+    } else if (this.ballType_ == 2) {
+      let icolor = this.moBallBodyVec_.length;
+      const {moBallBody, viBallMesh} = Ball_02(x, y, z, icolor);
+      this.moBallBodyVec_.push(moBallBody);
+      this.viBallMeshVec_.push(viBallMesh);
+      // イベントリスナ―内から参照できるよう this を持たせておく
+      moBallBody.src_ = this;
+    } else {
+      const {moBallBody, viBallMesh} = Ball_00(x, y, z);
+      this.moBallBodyVec_.push(moBallBody);
+      this.viBallMeshVec_.push(viBallMesh);
+      // イベントリスナ―内から参照できるよう this を持たせておく
+      moBallBody.src_ = this;
+    }
+  }
+
+  repop(moBall) {
+    // ボールの再発生
+    //   リサイクルボックス／場外に消えたボールを再利用して popさせる
+    // let p = new CANNON.Vec3(this.pg_.x + rnorm()/2,
+    //                         this.pg_.y + rnorm()/2,
+    //                         this.pg_.z + rnorm()/2);
+    let p;
+    if ((this.rndposi_ == undefined) || (this.rndposi_ == true)) {
+      p = new CANNON.Vec3(this.pg_.x + rnorm()/2,
+                          this.pg_.y + rnorm()/2,
+                          this.pg_.z + rnorm()/2);
+    } else {
+      p = new CANNON.Vec3(this.pg_.x, this.pg_.y, this.pg_.z);
+    }
+
+    let bok = false;
+    let iloopDbg = 0;
+    while (bok == false) {
+      iloopDbg += 1;
+      if (iloopDbg > 100) {
+        break;
+      }
+      let bfind = false; // 近傍にボールがあるかの判定
+      for (let i = 0; i < this.moBallBodyVec_.length; ++i) {
+        if (this.moBallBodyVec_[i].position.distanceTo(p) < 10) {
+          bfind = true;
+          break;
+        }
+      }
+      if (bfind == true) {
+          p.y += 15;
+      } else {
+          bok = true;
+      }
+    }
+    // 湧き出し地点／の上空 に配置する
+    moBall.position.copy(p);
+    moBall.velocity.copy(new CANNON.Vec3(0, 0, 0));
+  }
+
+}
+
+export class RecycleBox_00 {
+  // リサイクルボックス
+  // 生成したボールの回収。これに衝突したらボールを削除する
+  x_;
+  y_;
+  z_;
+  src_;
+
+  constructor(x, y, z, src) {
+    var adjx = 5; var adjy = 5; var adjz = 5;
+    x += adjx; y += adjy; z += adjz;
+    this.x_ = x;
+    this.y_ = y;
+    this.z_ = z;
+    this.src_ = src;
+    this.init()
+  }
+
+  init() {
+    const moRecycleBox2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Particle(),
+        position: new CANNON.Vec3(this.x_, this.y_, this.z_),
+        isTrigger: true,
+       });
+    world.addBody(moRecycleBox2Body);
+    var sx = 15; var sy = 15; var sz = 15;
+    const viRecycleBox2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRecycleBox2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.8, color: 0x000000});
+    const viRecycleBox2Mesh = new THREE.Mesh(viRecycleBox2Geo, viRecycleBox2Mtr);
+    viRecycleBox2Mesh.position.copy(new THREE.Vector3(this.x_, this.y_, this.z_));
+    scene.add(viRecycleBox2Mesh);
+    moRecycleBox2Body.addEventListener("collide", this.hitevent);
+  }
+
+  // 衝突時のイベント用の関数
+  //   メンバであっても this が使えないので注意
+  hitevent (e) {
+    var moRBox = e.contact.bi;
+    var moBall = e.contact.bj;
+    if (moBall.mass == 0) {
+      [moRBox, moBall] = [moBall, moRBox];
+    }
+    // Source の repop() に丸投げ
+    moBall.src_.repop(moBall);
+  }
+}
+
+export class Accelerator_00 {
+  // 加速器
+  x_;
+  y_;
+  z_;
+  dir_;  // 加速方向 0:x+, 1:z+, 2:x-, 3:z-, 4:y+, 5:y-
+  implus_;  // 衝撃
+
+  constructor(x, y, z, rot, implus) {
+    this.x_ = x;
+    this.y_ = y;
+    this.z_ = z;
+    this.implus_ = implus;
+    if (rot == 0) {
+      this.dir_ = new CANNON.Vec3(this.implus_, 0, 0);
+    } else if (rot == 1) {
+      this.dir_ = new CANNON.Vec3(0, 0, this.implus_);
+    } else if (rot == 2) {
+      this.dir_ = new CANNON.Vec3(-this.implus_, 0, 0);
+    } else if (rot == 3) {
+      this.dir_ = new CANNON.Vec3(0, 0, -this.implus_);
+    } else if (rot == 4) {
+      this.dir_ = new CANNON.Vec3(0, this.implus_, 0);
+    } else if (rot == 5) {
+      this.dir_ = new CANNON.Vec3(0, -this.implus_, 0);
+    } else {
+      this.dir_ = new CANNON.Vec3(1, 0, 0);
+    }
+    this.init()
+  }
+
+  init() {
+    const moAcc2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Particle(),
+        position: new CANNON.Vec3(this.x_, this.y_, this.z_),
+        isTrigger: true,
+      });
+    world.addBody(moAcc2Body);
+    var udir = this.dir_.unit();
+    var vidir = new CANNON.Vec3(0, 1, 0);
+    var vquat = new CANNON.Quaternion().setFromVectors(vidir, udir);
+    var srad = 1; var shigh = 3; var srseg= 4;
+    const viAcc2Geo = new THREE.ConeGeometry(srad, shigh, srseg);
+    const viAcc2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.8, color: 0xff0000});
+    const viAcc2Mesh = new THREE.Mesh(viAcc2Geo, viAcc2Mtr);
+    viAcc2Mesh.position.copy(new THREE.Vector3(this.x_, this.y_, this.z_));
+    viAcc2Mesh.quaternion.copy(vquat);
+    scene.add(viAcc2Mesh);
+    // 衝突イベントを紐づけ
+    moAcc2Body.addEventListener("collide", this.hitevent);
+    // イベントリスナ―内から参照できるよう this を持たせておく
+    moAcc2Body.acc_=this;
+  }
+
+  // 衝突時のイベント用の関数
+  //   メンバであっても this が使えないので注意
+  hitevent (e) {
+    var moAcc  = e.contact.bi;
+    var moBall = e.contact.bj;
+    if (moBall.mass == 0) {
+      [moAcc, moBall] = [moBall, moAcc];
+    }
+    moBall.applyImpulse(moAcc.acc_.dir_);
+  }
+}
+
+export class Accelerator_01 {
+  // 加速器（任意の方向）
+  // scene_;
+  // world_;
+  x_;
+  y_;
+  z_;
+  dir_;  // 加速方向ベクトル
+  implus_;  // 衝撃
+
+  constructor(x, y, z, vx, vy, vz, implus, color) {
+    this.x_ = x;
+    this.y_ = y;
+    this.z_ = z;
+    this.dir_ = new CANNON.Vec3(vx, vy, vz);
+    this.implus_ = implus;
+    this.color_ = color;
+    this.init()
+  }
+
+  init() {
+    const moAcc2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Particle(),
+        position: new CANNON.Vec3(this.x_, this.y_, this.z_),
+        isTrigger: true,
+      });
+    world.addBody(moAcc2Body);
+    var udir = this.dir_.unit();
+    var vidir = new CANNON.Vec3(0, 1, 0);
+    var vquat = new CANNON.Quaternion().setFromVectors(vidir, udir);
+    var srad = 1; var shigh = 3; var srseg= 4;
+    const viAcc2Geo = new THREE.ConeGeometry(srad, shigh, srseg);
+    var viAcc2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.8, color: 0xff0000});
+    if (this.color_ != null) {
+      var viAcc2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.8, color: this.color_});
+    }
+    const viAcc2Mesh = new THREE.Mesh(viAcc2Geo, viAcc2Mtr);
+    viAcc2Mesh.position.copy(new THREE.Vector3(this.x_, this.y_, this.z_));
+    viAcc2Mesh.quaternion.copy(vquat);
+    scene.add(viAcc2Mesh);
+    moAcc2Body.addEventListener("collide", this.hitevent);
+    // イベントリスナ―内から参照できるよう this を持たせておく
+    moAcc2Body.acc_=this;
+    // dir_ を方向（単位ベクトル）＊implus の値にしておく
+    this.dir_ = udir.scale(this.implus_);
+  }
+
+  // 衝突時のイベント用の関数
+  //   メンバであっても this が使えないので注意
+  hitevent (e) {
+    var moAcc  = e.contact.bi;
+    var moBall = e.contact.bj;
+    if (moBall.mass == 0) {
+      [moAcc, moBall] = [moBall, moAcc];
+    }
+    moBall.applyImpulse(moAcc.acc_.dir_);
+  }
+}
+
+
+export class Deccelerator_00 {
+  // 減速器
+  x_;
+  y_;
+  z_;
+  rate_;  // 吸収率
+  color_;
+
+  constructor(x, y, z, rate, color) {
+    this.x_ = x;
+    this.y_ = y;
+    this.z_ = z;
+    this.rate_ = rate;
+    this.color_ = color;
+    this.init();
+  }
+
+  init() {
+    const moAcc2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Particle(),
+        position: new CANNON.Vec3(this.x_, this.y_, this.z_),
+        isTrigger: true,
+      });
+    world.addBody(moAcc2Body);
+    // const radius = 1;
+    // const viAcc2Geo = new THREE.SphereGeometry(radius);
+    const sx = 1;
+    const viAcc2Geo = new THREE.BoxGeometry(sx, sx, sx);
+    let viAcc2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.8, color: 0x000000});
+    if (this.color_ != null) {
+      viAcc2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.8, color: this.color_});
+    }
+    const viAcc2Mesh = new THREE.Mesh(viAcc2Geo, viAcc2Mtr);
+    viAcc2Mesh.position.copy(new THREE.Vector3(this.x_, this.y_, this.z_));
+    scene.add(viAcc2Mesh);
+    moAcc2Body.addEventListener("collide", this.hitevent);
+    // イベントリスナ―内から参照できるよう this を持たせておく
+    moAcc2Body.dcc_=this;
+  }
+
+  // 衝突時のイベント用の関数
+  //   メンバであっても this が使えないので注意
+  hitevent (e) {
+    var moDcc  = e.contact.bi;
+    var moBall = e.contact.bj;
+    if (moBall.mass == 0) {
+      [moDcc, moBall] = [moBall, moDcc];
+    }
+    var v = moBall.velocity;
+    v = v.scale(moDcc.dcc_.rate_);
+    moBall.velocity.copy(v);
+  }
+}
+
+export class Elevator_00 {
+  // エレベータ
+  // - 上向きに加速するオブジェを内部に配置して、押し上げるエレベータ
+  // - 勢いよく飛び出ることが多い
+  // - 実装が簡単だけど動きがSFちっく。
+  // - 見た目、勝手に上昇しているような感じ
+  // - 機械的な動きにはちょっとほど遠い
+  x_;
+  y_;
+  z_;
+  h_;
+
+  constructor(x, y, z, h) {
+    this.x_ = x;
+    this.y_ = y;
+    this.z_ = z;
+    this.h_ = h;
+    this.init()
+  }
+
+  init() {
+    var sx = 1; var sy = 1; var sz = 1;
+    var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+    var px = this.x_; var py = this.y_ + this.h_/2; var pz = this.z_;
+    var pxx = this.x_; var pzz = this.z_;
+    var impmin = 20; var impstep = -15; var impini = 60;
+    var pyymin = this.y_ + blockSize_/2; 
+    var pyymax = this.y_ + this.h_ - blockSize_;
+    var pyystep = blockSize_;
+    var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_; var rot = 0;
+
+    var imp = impini;
+    for (var pyy = pyymin; pyy <= pyymax; pyy += pyystep) {
+      const moObj2Body = new CANNON.Body
+        ({mass: 0,
+          shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+          position: new CANNON.Vec3(pxx+adjx, pyy+adjy, pzz+adjz),
+          isTrigger: true,
+        });
+      world.addBody(moObj2Body);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({color: 0xa0a0a0, transparent: true, opacity: 0.2});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(moObj2Body.position);
+      scene.add(viObj2Mesh);
+      moObj2Body.imp_ = imp;
+      moObj2Body.addEventListener("collide", (event) => {
+        var moBall = event.contact.bi;
+        var moElv  = event.contact.bj;
+        if (moBall.mass == 0) {
+          [moBall, moElv] = [moElv, moBall];
+        }
+        var p = moBall.position;
+        moBall.applyImpulse(new CANNON.Vec3(0, moElv.imp_, 0));
+      });
+      var imp = Math.max(imp + impstep, impmin);
+    }
+
+    // エレベータの外枠
+    var sx = blockSize; var sy = this.h_; var sz = blockSize;
+    var pxyzlist = [[-blockSize_, -blockSize_, 0          ], // west
+                    [0          , 0          , +blockSize_], // south
+                    [+blockSize_, +blockSize_, 0          ], // east
+                    [0          , 0          , -blockSize_], // north
+                    ];
+    var sxyzlist = [[0.1      , sy-blockSize, blockSize], // west
+                    [blockSize, sy          , 0.1      ], // south
+                    [0.1      , sy-blockSize, blockSize], // east
+                    [blockSize, sy          , 0.1      ], // north
+                    ]
+    const moCntnrBody = new CANNON.Body({
+      mass: 0,
+      position: new CANNON.Vec3(0, 0, 0),
+      material: moRailMtr,
+    });
+    const viCntnrMesh = new THREE.Group();
+    for (var ii = 0; ii < pxyzlist.length; ++ii) {
+      var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+      var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+      var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                           new CANNON.Vec3(pxx, pyy, pzz));
+      const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+      // const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.01, wireframe:true});
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+      viCntnrMesh.add(viObj2Mesh);
+    }
+    var pxyzlist = [[0, sy/2, 0], // top
+                    [0, -sy/2, 0], // bottom
+                    ];
+    var sxyzlist = [[blockSize, 0.1, blockSize], // top
+                    [blockSize, 0.1, blockSize], // bottom
+                    ]
+    var quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, -1), 0.6);
+    for (var ii = 0; ii < pxyzlist.length; ++ii) {
+      var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+      var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+      var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                           new CANNON.Vec3(pxx, pyy, pzz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+      // const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.01, wireframe:true});
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+    moCntnrBody.position = new CANNON.Vec3(px+adjx, py+adjy, pz+adjz);
+    if (rot != 0) {
+      moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    }
+    viCntnrMesh.position.copy(moCntnrBody.position);
+    viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+    world.addBody(moCntnrBody);
+    scene.add(viCntnrMesh);
+  }
+}
+
+
+export class Elevator_01 {
+  // エレベータ
+  // - 上昇用のプレートを配置して、動かす版
+  // - メカニカル
+  // - 実装が面倒..
+  x_;
+  y_;
+  z_;
+  h_;
+
+  constructor(x, y, z, h, rot) {
+    this.x_ = x;
+    this.y_ = y;
+    this.z_ = z;
+    this.h_ = h;
+    this.rot_ = rot;
+    this.vspeed_ = 0.05;
+    this.init()
+  }
+
+  init() {
+    var sx = blockSize; var sy = 0.01; var sz = blockSize;
+    var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+    var px = this.x_; var py = this.y_ + this.h_/2; var pz = this.z_;
+    var pxx = this.x_; var pzz = this.z_;
+    var rot = this.rot_;
+    var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+    var pyymin = this.y_ - blockSize_;
+    var pyymax = pyymin + Math.floor(this.h_/blockSize+1)*blockSize;
+    var pyystep = blockSize;
+    this.pymin_ = pyymin;
+    this.pymax_ = pyymax;
+    var qplate = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), 0.2);
+    if (rot == 1) {
+      var qplate = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), 0.2);
+    } else if (rot == 2) {
+      var qplate = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, -1), 0.2);
+    } else if (rot == 3) {
+      var qplate = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(-1, 0, 0), 0.2);
+    }
+
+    // 内部の移動するプレート
+    this.moPlateList_ = [];
+    this.viPlateList_ = [];
+    for (var pyy = pyymin; pyy <= pyymax; pyy += pyystep) {
+      const moObj2Body = new CANNON.Body
+        ({mass: 0,
+          shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+          position: new CANNON.Vec3(pxx+adjx, pyy, pzz+adjz),
+          quaternion: qplate
+         });
+      world.addBody(moObj2Body);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({color: 0xa0a0a0, transparent: true, opacity: 0.2});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(moObj2Body.position);
+      viObj2Mesh.quaternion.copy(moObj2Body.quaternion);
+      scene.add(viObj2Mesh);
+      this.moPlateList_.push(moObj2Body);
+      this.viPlateList_.push(viObj2Mesh);
+    }
+
+    const moCntnrBody = new CANNON.Body({
+      mass: 0,
+      position: new CANNON.Vec3(0, 0, 0),
+      material: moRailMtr,
+    });
+    const viCntnrMesh = new THREE.Group();
+
+    // エレベータの外枠
+    var sx = blockSize; var sy = this.h_; var sz = blockSize;
+    var pxyzlist = [[-blockSize_, -blockSize_, 0          ], // west
+                    [0          , 0          , +blockSize_], // south
+                    [+blockSize_, +blockSize_, 0          ], // east
+                    [0          , 0          , -blockSize_], // north
+                    ];
+    var sxyzlist = [[0.1      , sy-blockSize, blockSize], // west
+                    [blockSize, sy          , 0.1      ], // south
+                    [0.1      , sy-blockSize, blockSize], // east
+                    [blockSize, sy          , 0.1      ], // north
+                    ]
+    for (var ii = 0; ii < pxyzlist.length; ++ii) {
+      var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+      var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+      var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                           new CANNON.Vec3(pxx, pyy, pzz));
+      const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+//      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.01, wireframe:true});
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+      viCntnrMesh.add(viObj2Mesh);
+    }
+    var pxyzlist = [[0, sy/2, 0], // top
+                    [0, -sy/2-2, 0], // bottom
+                    ];
+    var sxyzlist = [[blockSize, 0.1, blockSize], // top
+                    [blockSize, 0.1, blockSize], // bottom
+                    ]
+    var quatlist = [new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), -0.6),
+                    new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), 0.2),
+                    ]
+    for (var ii = 0; ii < pxyzlist.length; ++ii) {
+      var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+      var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+      var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+      var quat = quatlist[ii];
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                           new CANNON.Vec3(pxx, pyy, pzz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.01, wireframe:true});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+    moCntnrBody.position = new CANNON.Vec3(px+adjx, py+adjy, pz+adjz);
+    if (rot != 0) {
+      moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    }
+    viCntnrMesh.position.copy(moCntnrBody.position);
+    viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+    world.addBody(moCntnrBody);
+    scene.add(viCntnrMesh);
+  }
+
+  act() {
+    for (var ii = 0; ii < this.moPlateList_.length; ++ii) {
+      var p = this.moPlateList_[ii].position;
+      p.y = (p.y + this.vspeed_);
+      if (p.y >= this.pymax_) {
+        p.y = this.pymin_;
+      }
+      this.moPlateList_[ii].position.copy(new CANNON.Vec3(p.x, p.y, p.z));
+      this.viPlateList_[ii].position.copy(this.moPlateList_[ii].position);
+      this.viPlateList_[ii].quaternion.copy(this.moPlateList_[ii].quaternion);
+    }
+  }
+}
+
+export function Ball_00_glb(x,y,z) {
+  // 球
+  //   グローバルで生成、テスト用
+  var {moBallBody, viBallMesh} = Ball_00(x,y,z);
+  moBallBodyVecGlb.push(moBallBody);
+  viBallMeshVecGlb.push(viBallMesh);
+}
+
+export function Ball_00(x,y,z) {
+  // 球
+  const radius = ballR;
+  const moBallBody = new CANNON.Body
+      ({mass: 5,
+        shape: new CANNON.Sphere(radius),
+        position: new CANNON.Vec3(x, y, z),
+        material: moBallMtr,
+        angularDamping: 0.00001, // def=0.01
+        linearDamping: 0.00001, // def=0.01
+       });
+  world.addBody(moBallBody);
+  const viBallGeo = new THREE.SphereGeometry(radius);
+  const viBallMtr = new THREE.MeshNormalMaterial();
+  const viBallMesh = new THREE.Mesh(viBallGeo, viBallMtr);
+  viBallMesh.position.copy(moBallBody.position);
+  scene.add(viBallMesh);
+  // 描画を自動で更新させるために postStepにイベント追加
+  world.addEventListener('postStep', () => {
+    viBallMesh.position.copy(moBallBody.position);
+    viBallMesh.quaternion.copy(moBallBody.quaternion);
+  })
+  return {moBallBody, viBallMesh};
+}
+
+export function Ball_01(x,y,z) {
+  // 球
+  const radius = ballR;
+  const moBallBody = new CANNON.Body
+      ({mass: 5,
+        shape: new CANNON.Sphere(radius),
+        position: new CANNON.Vec3(x, y, z),
+        material: moBallMtr,
+        angularDamping: 0.00001, // def=0.01
+        linearDamping: 0.00001, // def=0.01
+       });
+  world.addBody(moBallBody);
+  const viBallGeo = new THREE.SphereGeometry(radius);
+  const viBallMtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4, wireframe:true});
+  const viBallMesh = new THREE.Mesh(viBallGeo, viBallMtr);
+  viBallMesh.position.copy(moBallBody.position);
+  scene.add(viBallMesh);
+  // 描画を自動で更新させるために postStepにイベント追加
+  world.addEventListener('postStep', () => {
+    viBallMesh.position.copy(moBallBody.position);
+    viBallMesh.quaternion.copy(moBallBody.quaternion);
+  })
+  return {moBallBody, viBallMesh};
+}
+
+export function Ball_02(x,y,z,icolor) {
+  // 球
+  // ref: https://phpjavascriptroom.com/?t=css&p=colors
+  const colorlist = [0xF08080, // LightCoral
+                     0x87CEFA, // LightSkyBlue
+                     0x7CFC00, // LawnGreen
+                     0xFAFAD2, // LightGoldenRodYellow
+                     0x6B8E23, // OliveDrab
+                     0x708090, // SlateGray
+                    ];
+  var vcolor = new THREE.Color(colorlist[icolor % colorlist.length]);
+ //console.log("ball02, icolor=",icolor, vcolor);
+  const radius = ballR;
+  const moBallBody = new CANNON.Body
+      ({mass: 5,
+        shape: new CANNON.Sphere(radius),
+        position: new CANNON.Vec3(x, y, z),
+        material: moBallMtr,
+        angularDamping: 0.00001, // def=0.01
+        linearDamping: 0.00001, // def=0.01
+       });
+  world.addBody(moBallBody);
+  const viBallGeo = new THREE.SphereGeometry(radius);
+  const viBallMtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4, color: vcolor});
+  const viBallMesh = new THREE.Mesh(viBallGeo, viBallMtr);
+  viBallMesh.position.copy(moBallBody.position);
+  scene.add(viBallMesh);
+  // 描画を自動で更新させるために postStepにイベント追加
+  world.addEventListener('postStep', () => {
+    viBallMesh.position.copy(moBallBody.position);
+    viBallMesh.quaternion.copy(moBallBody.quaternion);
+  })
+  return {moBallBody, viBallMesh};
+}
+
+export function Rail_00(x,y,z) {
+    // レール　直進　水平　10x10x10
+    //   細い直方体２本で表現
+    var sx = 10; var sy = 1; var sz = 1;
+    var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+    // var px = 0; var py = 0; var pz = railIntr/2;  // 原点を部品の中心位置としたときのレール位置の中心
+    var px = 0; var py = 0; var pz = railIntr_;
+    var adjx = 5; var adjy = 5; var adjz = 5;
+    {
+      const moRailA2Body = new CANNON.Body
+        ({mass: 0,
+          shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+          position: new CANNON.Vec3(x+px+adjx, y+py+adjy, z+pz+adjz),
+          material: moRailMtr,
+         });
+      world.addBody(moRailA2Body);
+      const viRailA2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRailA2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+      const viRailA2Mesh = new THREE.Mesh(viRailA2Geo, viRailA2Mtr);
+      scene.add(viRailA2Mesh);
+      viRailA2Mesh.position.copy(moRailA2Body.position);
+      viRailA2Mesh.quaternion.copy(moRailA2Body.quaternion);
+    }
+    {
+      const moRailB2Body = new CANNON.Body
+        ({mass: 0,
+          shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+          position: new CANNON.Vec3(x+px+adjx, y+py+adjy, z-pz+adjz),
+          material: moRailMtr,
+         });
+      world.addBody(moRailB2Body);
+      const viRailB2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRailB2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRailB2Mesh = new THREE.Mesh(viRailB2Geo, viRailB2Mtr);
+      scene.add(viRailB2Mesh);
+      viRailB2Mesh.position.copy(moRailB2Body.position);
+      viRailB2Mesh.quaternion.copy(moRailB2Body.quaternion);
+    }
+  }
+
+export function Rail_01(x,y,z) {
+    // レール　直進　傾斜　20x10x10　角度 atan(1/2)
+    //   細い直方体２本で表現
+    // 本来なら10だが、重なった部分がちらつくので、ちょい縮める
+    var sx = 9.8*Math.sqrt(5); var sy = 1; var sz = 1; var ang=Math.atan(1/2);
+    var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+    var px = 0; var py = 0; var pz = railIntr_; // railIntr/2;
+    var adjx = 10; var adjy = 10; var adjz = 5;  // 低い側を原点側としたときの座標補正
+    var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+    {
+      const moRailA2Body = new CANNON.Body
+        ({mass: 0,
+          shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+          position: new CANNON.Vec3(x+px+adjx, y+py+adjy, z+pz+adjz),
+          quaternion: railQuat,
+          material: moRailMtr,
+         });
+      world.addBody(moRailA2Body);
+      const viRailA2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRailA2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+      const viRailA2Mesh = new THREE.Mesh(viRailA2Geo, viRailA2Mtr);
+      scene.add(viRailA2Mesh);
+      viRailA2Mesh.position.copy(moRailA2Body.position);
+      viRailA2Mesh.quaternion.copy(moRailA2Body.quaternion);
+    }
+    {
+      const moRailB2Body = new CANNON.Body
+        ({mass: 0,
+          shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+          position: new CANNON.Vec3(x+px+adjx, y+py+adjy, z-pz+adjz),
+          quaternion: railQuat,
+          material: moRailMtr,
+         });
+      world.addBody(moRailB2Body);
+      const viRailB2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRailB2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRailB2Mesh = new THREE.Mesh(viRailB2Geo, viRailB2Mtr);
+      scene.add(viRailB2Mesh);
+      viRailB2Mesh.position.copy(moRailB2Body.position);
+      viRailB2Mesh.quaternion.copy(moRailB2Body.quaternion);
+    }
+  }
+
+
+export function Rail_02(x,y,z) {
+    // レール　直進　傾斜　20x10x10
+    //   細い直方体２本で表現、傾斜をsin波で作る[-PI/2, PI/2]の範囲で
+    var dx = 20; var dy = 10; var dx_ = dx/2; var dy_ = dy/2;
+    var ndiv = 20;
+    var xxlist = [];
+    var yylist = [];
+    for (var i = 0; i < ndiv+1; ++i) {
+        var xx = i/ndiv*dx - dx_;
+        var vrad = i/ndiv*Math.PI - PI_;
+        var yy = Math.sin(vrad)*dy_;
+        xxlist.push(xx);
+        yylist.push(yy);
+    }
+    var sy = 1; var sz = 1;
+    var sy_ = sy/2; var sz_ = sz/2;
+    var pz = railIntr_; // railIntr/2;
+    var adjx = 10; var adjy = 10; var adjz = 5;
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i]; var yy1 = yylist[i];
+      var xx2 = xxlist[i+1]; var yy2 = yylist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var ang=Math.atan((yy1-yy2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      {
+        const moRailA2Body = new CANNON.Body
+          ({mass: 0,
+            shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+            position: new CANNON.Vec3(x+px+adjx, y+py+adjy, z+pz+adjz),
+            quaternion: railQuat,
+            material: moRailMtr,
+           });
+        world.addBody(moRailA2Body);
+        const viRailA2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRailA2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRailA2Mesh = new THREE.Mesh(viRailA2Geo, viRailA2Mtr);
+        scene.add(viRailA2Mesh);
+        viRailA2Mesh.position.copy(moRailA2Body.position);
+        viRailA2Mesh.quaternion.copy(moRailA2Body.quaternion);
+      }
+      {
+        const moRailB2Body = new CANNON.Body
+          ({mass: 0,
+            shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+            position: new CANNON.Vec3(x+px+adjx, y+py+adjy, z-pz+adjz),
+            quaternion: railQuat,
+            material: moRailMtr,
+           });
+        world.addBody(moRailB2Body);
+        const viRailB2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRailB2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+        const viRailB2Mesh = new THREE.Mesh(viRailB2Geo, viRailB2Mtr);
+        scene.add(viRailB2Mesh);
+        viRailB2Mesh.position.copy(moRailB2Body.position);
+        viRailB2Mesh.quaternion.copy(moRailB2Body.quaternion);
+      }
+    }
+}
+
+export function Rail_03(x,y,z) {
+    // レール　左右曲（小径）　10x10x10
+    //   細い直方体２本で表現
+    var rinn = (10 - railIntr)/2; // 内側の半径
+    var rout = (10 + railIntr)/2; // 外側の半径
+    var ndiv = 10;  // 円弧（９０度）の分割数
+    var xxadj = -5;
+    var zzadj = -5;
+    var xxinnlist = [];
+    var zzinnlist = [];
+    var xxoutlist = [];
+    var zzoutlist = [];
+    for (var i = 0; i < ndiv+1; ++i) {
+        var vrad = i/ndiv*PI_;
+        var xx = Math.cos(vrad);
+        var zz = Math.sin(vrad);
+        xxinnlist.push(xx*rinn+xxadj);
+        zzinnlist.push(zz*rinn+zzadj);
+        xxoutlist.push(xx*rout+xxadj);
+        zzoutlist.push(zz*rout+zzadj);
+    }
+    var sy = 1; var sz = 1;
+    var sy_ = sy/2; var sz_ = sz/2;
+    var py = 0;
+    var adjx = 5; var adjy = 5; var adjz = 5;
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxinnlist[i];   var zz1 = zzinnlist[i];
+      var xx2 = xxinnlist[i+1]; var zz2 = zzinnlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        const moRailA2Body = new CANNON.Body
+          ({mass: 0,
+            shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+            position: new CANNON.Vec3(x+px+adjx, y+py+adjy, z+pz+adjz),
+            quaternion: railQuat,
+            material: moRailMtr,
+           });
+        world.addBody(moRailA2Body);
+        const viRailA2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRailA2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRailA2Mesh = new THREE.Mesh(viRailA2Geo, viRailA2Mtr);
+        scene.add(viRailA2Mesh);
+        viRailA2Mesh.position.copy(moRailA2Body.position);
+        viRailA2Mesh.quaternion.copy(moRailA2Body.quaternion);
+      }
+    }
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxoutlist[i];   var zz1 = zzoutlist[i];
+      var xx2 = xxoutlist[i+1]; var zz2 = zzoutlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        const moRailA2Body = new CANNON.Body
+          ({mass: 0,
+            shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+            position: new CANNON.Vec3(x+px+adjx, y+py+adjy, z+pz+adjz),
+            quaternion: railQuat,
+            material: moRailMtr,
+           });
+        world.addBody(moRailA2Body);
+        const viRailA2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRailA2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+        const viRailA2Mesh = new THREE.Mesh(viRailA2Geo, viRailA2Mtr);
+        scene.add(viRailA2Mesh);
+        viRailA2Mesh.position.copy(moRailA2Body.position);
+        viRailA2Mesh.quaternion.copy(moRailA2Body.quaternion);
+      }
+    }
+}
+
+
+
+export function Rail_04(x,y,z,rot) {
+  // rail_st
+  // レール　直進　水平　10x10x10
+  //   細い直方体２本で表現
+  // x,y,z : レールの部品のmin側：表示位置
+  // rot : 90度単位
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  var sx = blockSize; var sy = railw; var sz = railw;
+  var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  var px = 0; var py = 0; var pz = railIntr_; // railIntr/2;
+  var pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0];
+    var pyy = pxyzlist[ii][1];
+    var pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  // moCntnrBody.position = new CANNON.Vec3(x, y, z);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Rail_23(x,y,z,rot) {
+  // rail_st50
+  // レール　直進　水平　50x10x10
+  //   細い直方体２本で表現
+  // x,y,z : レールの部品のmin側：表示位置
+  // rot : 90度単位
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  let sx = blockSize*5; let sy = railw; let sz = railw;
+  let sx_ = sx/2; let sy_ = sy/2; let sz_ = sz/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  let adjxlist = [sx_       , blockSize_, sx_       , blockSize_];
+  let adjzlist = [blockSize_, sx_       , blockSize_, sx_       ];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0];
+    let pyy = pxyzlist[ii][1];
+    let pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  // moCntnrBody.position = new CANNON.Vec3(x, y, z);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_25(x,y,z,rot) {
+  // rail_st90
+  // レール　直進　水平　90x10x10
+  //   細い直方体２本で表現
+  // x,y,z : レールの部品のmin側：表示位置
+  // rot : 90度単位
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  var sx = blockSize*9; var sy = railw; var sz = railw;
+  var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  var px = 0; var py = 0; var pz = railIntr_; // railIntr/2;
+  var pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+//  var adjx = sx_; var adjy = blockSize_; var adjz = blockSize_;
+  var adjxlist = [sx_       , blockSize_, sx_       , blockSize_];
+  var adjzlist = [blockSize_, sx_       , blockSize_, sx_       ];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0];
+    var pyy = pxyzlist[ii][1];
+    var pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  // moCntnrBody.position = new CANNON.Vec3(x, y, z);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_14(x,y,z,rot) {
+  // rail_st100
+  // レール　直進　水平　100x10x10
+  //   細い直方体２本で表現
+  // x,y,z : レールの部品のmin側：表示位置
+  // rot : 90度単位
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  let sx = blockSize*10; let sy = railw; let sz = railw;
+  let sx_ = sx/2; let sy_ = sy/2; let sz_ = sz/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  let adjxlist = [sx_       , blockSize_, sx_       , blockSize_];
+  let adjzlist = [blockSize_, sx_       , blockSize_, sx_       ];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0];
+    let pyy = pxyzlist[ii][1];
+    let pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  // moCntnrBody.position = new CANNON.Vec3(x, y, z);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_26(x,y,z,rot) {
+  // rail_st110
+  // レール　直進　水平　110x10x10
+  //   細い直方体２本で表現
+  // x,y,z : レールの部品のmin側：表示位置
+  // rot : 90度単位
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  var sx = blockSize*11; var sy = 1; var sz = 1;
+  var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  var px = 0; var py = 0; var pz = railIntr_; // railIntr/2;
+  var pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+//  var adjx = sx_; var adjy = blockSize_; var adjz = blockSize_;
+  var adjxlist = [sx_       , blockSize_, sx_       , blockSize_];
+  var adjzlist = [blockSize_, sx_       , blockSize_, sx_       ];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0];
+    var pyy = pxyzlist[ii][1];
+    var pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  // moCntnrBody.position = new CANNON.Vec3(x, y, z);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_04_2(x,y,z,rot) {
+  // rail_st_shift_line
+  // レール　直進（ラインをずらす）　10x10x10
+  // [top]
+  //  +------+
+  //  |―＼＿|
+  //  |―＼＿|
+  //  +------+
+  var dx = blockSize; var dz = blockSize_; var dx_ = dx/2; var dz_ = dz/2;
+  var ndiv = 10; // x軸方向の分割数
+  var drad = Math.PI/ndiv;  // 分割１つぶんのradian
+  var r2 = 2; // ブレ幅
+  var r = r2/2;
+  var xyzcntlist = [];
+  var xyzuplist = [];  // 上側
+  var xyzdnlist = [];  // 下側
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = - i*drad - PI_;
+      var xx = i*dx/ndiv;
+      var yy = 0;
+      var zz = Math.sin(vrad)*r;
+      var zzup = zz-railIntr_;
+      var zzdn = zz+railIntr_;
+      xyzcntlist.push([xx, yy ,zz]);
+      xyzuplist.push([xx, yy ,zzup]);
+      xyzdnlist.push([xx, yy ,zzdn]);
+  }
+  var xxxlist = [xyzuplist, xyzdnlist, // xyzcntlist
+                ];
+  var opalist = [0.4, 0.4, // 0.1
+                ];
+  var sy = 1; var sz = 1;
+//  var sy = 0.1; var sz = 0.1;
+  var sy_ = sy/2; var sz_ = sz/2;
+//  var adjx = -blockSize_; var adjy = 0; var adjz = r;
+//  var adjx = 0; var adjy = 0; var adjz = r;
+//  var adjx = 0; var adjy = blockSize_; var adjz = blockSize_+r;
+  var adjxlist = [blockSize_*0  , blockSize_*1+r, blockSize_*2  , blockSize_*1-r];
+  var adjzlist = [blockSize_*1+r, blockSize_*2  , blockSize_*1-r, blockSize_*0];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var ndiv = xyzlist.length-1;
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_04_3(x,y,z,rot) {
+  // rail_st_shift_line2
+  // レール　直進（ラインをずらす・反転）　10x10x10
+  // [top]
+  //  +------+
+  //  |＿／―|
+  //  |＿／―|
+  //  +------+
+  var dx = blockSize; var dz = blockSize_; var dx_ = dx/2; var dz_ = dz/2;
+  var ndiv = 10; // x軸方向の分割数
+  var drad = Math.PI/ndiv;  // 分割１つぶんのradian
+  var r2 = 2; // ブレ幅
+  var r = r2/2;
+  var xyzcntlist = [];
+  var xyzuplist = [];  // 上側
+  var xyzdnlist = [];  // 下側
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = - i*drad + PI_;
+      var xx = i*dx/ndiv;
+      var yy = 0;
+      var zz = Math.sin(vrad)*r;
+      var zzup = zz-railIntr_;
+      var zzdn = zz+railIntr_;
+      xyzcntlist.push([xx, yy ,zz]);
+      xyzuplist.push([xx, yy ,zzup]);
+      xyzdnlist.push([xx, yy ,zzdn]);
+  }
+  var xxxlist = [xyzuplist, xyzdnlist, // xyzcntlist
+                ];
+  var opalist = [0.4, 0.4, // 0.1
+                ];
+  var sy = 1; var sz = 1;
+//  var sy = 0.1; var sz = 0.1;
+  var sy_ = sy/2; var sz_ = sz/2;
+//  var adjx = -blockSize_; var adjy = 0; var adjz = r;
+  var adjxlist = [blockSize_*0  , blockSize_*1-r, blockSize_*2  , blockSize_*1+r];
+  var adjzlist = [blockSize_*1-r, blockSize_*2  , blockSize_*1+r, blockSize_*0];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var ndiv = xyzlist.length-1;
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_05(x,y,z,rot) {
+  // rail_st_slope
+  // rail_st_slopeH10L20
+  // レール　直進　坂／直線　20x10x10　角度 atan(1/2)
+  //   細い直方体２本で表現
+  // var sx = 10*Math.sqrt(5); var sy = 1; var sz = 1; var ang=Math.atan(1/2);
+  // 本来なら10だが、重なった部分がちらつくので、ちょい縮める
+  // [top]
+  //  +------+------+
+  //  |＿＿__|＿＿__|
+  //  |￣￣￣|￣￣￣|
+  //  +------+------+
+  //
+  // [side]
+  //  +------+------+
+  //  |     _|_--~~~|
+  //  |___-- |      |
+  //  +------+------+
+  let sx = 9.8*Math.sqrt(5); let sy = railw; let sz = railw; let ang=Math.atan(1/2);
+  let sx_ = sx/2; let sy_ = sy/2; let sz_ = sz/2;
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  // // let adjx = 10; let adjy = 10; let adjz = 5;  // 低い側を原点側としたときの座標補正
+  // let adjx = blockSize_ + blockSize_*Math.cos(PI_*rot); let adjy = blockSize; let adjz = blockSize_ + blockSize_*Math.sin(PI_*rot);
+  let adjx = blockSize_ + blockSize_*((rot+1) % 2); let adjy = blockSize; let adjz = blockSize_ + blockSize_*(rot % 2);
+  let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0];
+    let pyy = pxyzlist[ii][1];
+    let pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         railQuat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(railQuat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  // moCntnrBody.position = new CANNON.Vec3(x, y, z);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Rail_18(x,y,z,rot) {
+  // rail_st_slopeH10L10
+  // レール　直進　坂／直線　10x10x10　角度 atan(1/1)
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  //
+  // [side]
+  //  +------+
+  //  |  _-~~|
+  //  |_-    |
+  //  +------+
+  var sx = 9.8*Math.sqrt(2); var sy = 1; var sz = 1; var ang=Math.atan(1/1);
+  var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+  var px = 0; var py = 0; var pz = railIntr_; // railIntr/2;
+  var pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  var adjxlist = [blockSize_, blockSize_, blockSize_, blockSize_];
+  var adjzlist = [blockSize_, blockSize_, blockSize_, blockSize_];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize;
+  var adjz = adjzlist[rot%4];
+  var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0];
+    var pyy = pxyzlist[ii][1];
+    var pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         railQuat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(railQuat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Rail_19(x,y,z,rot) {
+  // rail_st_slopeH10L30
+  // レール　直進　坂／直線　30x10x10　角度 atan(1/3)
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  // [side]
+  //  +------+
+  //  |  _-~~|
+  //  |_-    |
+  //  +------+
+  let sx = 9.8*Math.sqrt(10); let sy = 1; let sz = 1; let ang=Math.atan(1/3);
+  let sx_ = sx/2; let sy_ = sy/2; let sz_ = sz/2;
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  let adjxlist = [blockSize_*3, blockSize_  , blockSize_*3, blockSize_];
+  let adjzlist = [blockSize_  , blockSize_*3, blockSize_  , blockSize_*3];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize;
+  let adjz = adjzlist[rot%4];
+  let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0];
+    let pyy = pxyzlist[ii][1];
+    let pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         railQuat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(railQuat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Rail_20(x,y,z,rot) {
+  // rail_st_slopeH10L40
+  // レール　直進　坂／直線　40x10x10　角度 atan(1/4)
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  // [side]
+  //  +------+
+  //  |  _-~~|
+  //  |_-    |
+  //  +------+
+  let sx = 9.9*Math.sqrt(17); let sy = railw; let sz = railw; let ang=Math.atan(1/4);
+  let sx_ = sx/2; let sy_ = sy/2; let sz_ = sz/2;
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+//  let adjx = blockSize_ + blockSize_*((rot+1) % 2); let adjy = blockSize; let adjz = blockSize_ + blockSize_*(rot % 2);
+  let adjxlist = [blockSize_*4, blockSize_  , blockSize_*4, blockSize_];
+  let adjzlist = [blockSize_  , blockSize_*4, blockSize_  , blockSize_*4];
+  let adjx = blockSize;
+  let adjy = blockSize;
+  let adjz = blockSize;
+  if (rot == Math.ceil(rot)) {
+    adjx = adjxlist[rot%4];
+    adjz = adjzlist[rot%4];
+  }
+  let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0];
+    let pyy = pxyzlist[ii][1];
+    let pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         railQuat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(railQuat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_21(x,y,z,rot) {
+  // rail_st_slopeH10L50
+  // レール　直進　坂／直線　50x10x10　角度 atan(1/5)
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  // [side]
+  //  +------+
+  //  |  _-~~|
+  //  |_-    |
+  //  +------+
+  let sx = 9.95*Math.sqrt(26); let sy = 1; let sz = 1; let ang=Math.atan(1/5);
+  let sx_ = sx/2; let sy_ = sy/2; let sz_ = sz/2;
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  let adjxlist = [blockSize_*5, blockSize_  , blockSize_*5, blockSize_];
+  let adjzlist = [blockSize_  , blockSize_*5, blockSize_  , blockSize_*5];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize;
+  let adjz = adjzlist[rot%4];
+  let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0];
+    let pyy = pxyzlist[ii][1];
+    let pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         railQuat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(railQuat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_22(x,y,z,rot) {
+  // rail_st_slopeH10L100
+  // レール　直進　坂／直線　50x10x10　角度 atan(1/10)
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  // [side]
+  //  +------+
+  //  |  _-~~|
+  //  |_-    |
+  //  +------+
+  let sx = 10*Math.sqrt(101); let sy = 1; let sz = 1; let ang=Math.atan(1/10);
+  let sx_ = sx/2; let sy_ = sy/2; let sz_ = sz/2;
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  let adjxlist = [blockSize_*10, blockSize_  , blockSize_*10, blockSize_];
+  let adjzlist = [blockSize_  , blockSize_*10, blockSize_   , blockSize_*10];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize;
+  let adjz = adjzlist[rot%4];
+  let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0];
+    let pyy = pxyzlist[ii][1];
+    let pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         railQuat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(railQuat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_27(x,y,z,rot) {
+  // rail_st_slopeH20L20
+  // レール　直進　坂／直線　20x20x10　角度 atan(1/1)
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  // [side]
+  //  +------+
+  //  |  _-~~|
+  //  |_-    |
+  //  +------+
+  let sx = 10*Math.sqrt(8); let sy = 1; let sz = 1; let ang=Math.atan(1/1);
+  let sx_ = sx/2; let sy_ = sy/2; let sz_ = sz/2;
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  let adjxlist = [blockSize_*2  , blockSize_*1, blockSize_*2, blockSize_*1];
+  let adjzlist = [blockSize_*1  , blockSize_*2, blockSize_*1, blockSize_*2];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_*3;
+  let adjz = adjzlist[rot%4];
+  let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0];
+    let pyy = pxyzlist[ii][1];
+    let pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         railQuat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(railQuat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_28(x,y,z,rot) {
+  // rail_st_slopeH40L20
+  // レール　直進　坂／直線　20x40x10　角度 atan(1/1)
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  // [side]
+  //  +------+
+  //  |  _-~~|
+  //  |_-    |
+  //  +------+
+  let sx = 10*Math.sqrt(20); let sy = railw; let sz = railw; let ang=Math.atan(2/1);
+  let sx_ = sx/2; let sy_ = sy/2; let sz_ = sz/2;
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  let adjxlist = [blockSize_*2, blockSize_*1, blockSize_*2, blockSize_*1];
+  let adjzlist = [blockSize_*1, blockSize_*2, blockSize_*1, blockSize_*2];
+  let adjx = blockSize_;
+  let adjy = blockSize_*5;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+    adjx = adjxlist[rot%4];
+    adjz = adjzlist[rot%4];
+  }
+  let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0];
+    let pyy = pxyzlist[ii][1];
+    let pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         railQuat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(railQuat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_29(x,y,z,rot) {
+  // rail_st_slopeH60L20
+  // レール　直進　坂／直線　20x60x10　角度 atan(3/1)
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |＿＿__|
+  //  |￣￣￣|
+  //  +------+
+  // [side]
+  //  +------+
+  //  |  _-~~|
+  //  |_-    |
+  //  +------+
+  let sx = 10*Math.sqrt(40); let sy = 1; let sz = 1; let ang=Math.atan(3/1);
+  let sx_ = sx/2; let sy_ = sy/2; let sz_ = sz/2;
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  let adjxlist = [blockSize_*2, blockSize_  , blockSize_*2, blockSize_];
+  let adjzlist = [blockSize_*1, blockSize_*2, blockSize_  , blockSize_*2];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_*7;
+  let adjz = adjzlist[rot%4];
+  let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0];
+    let pyy = pxyzlist[ii][1];
+    let pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         railQuat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(railQuat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_06(x,y,z,rot) {
+  // rail_st_slope_arc
+  // レール　直進　坂／曲線　20x10x10
+  //   細い直方体２本で表現、傾斜をsin波で作る[-PI/2, PI/2]の範囲で
+  //  [top]
+  //  +------+------+
+  //  |＿＿__|＿＿__|
+  //  |￣￣￣|￣￣￣|
+  //  +------+------+
+  //  [side]
+  //  +------+------+
+  //  |     _|-~~~~~|
+  //  |____- |      |
+  //  +------+------+
+  var dx = 20; var dy = 10; var dx_ = dx/2; var dy_ = dy/2;
+  var ndiv = 20;
+  var xxlist = [];
+  var yylist = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var xx = i/ndiv*dx - dx_;
+      var vrad = i/ndiv*Math.PI - PI_;
+      var yy = Math.sin(vrad)*dy_;
+      xxlist.push(xx);
+      yylist.push(yy);
+  }
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pz = railIntr_; // railIntr/2;
+  var pxyzlist = [[-1, -1, pz],
+                  [-1, -1, -pz]];
+  var adjx = blockSize_ + blockSize_*((rot+1) % 2); var adjy = blockSize; var adjz = blockSize_ + blockSize_*(rot % 2);
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var i = 0; i < ndiv; ++i) {
+    var xx1 = xxlist[i]; var yy1 = yylist[i];
+    var xx2 = xxlist[i+1]; var yy2 = yylist[i+1];
+    var sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+    var sx_ = sx/2;
+    var px = (xx1+xx2)/2;
+    var py = (yy1+yy2)/2;
+    var ang=Math.atan((yy1-yy2)/(xx1-xx2));
+    var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+    for (var ii = 0; ii < pxyzlist.length; ++ii) {
+      var pzz = pxyzlist[ii][2];
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pzz),
+                           railQuat);
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pzz));
+      viRail2Mesh.quaternion.copy(railQuat);
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_06_2(x,y,z,rot) {
+  // rail_st_slope_arc_s
+  // レール　直進　坂／曲線（高さ半分　20x5x10
+  //   傾斜をsin波で作る[-PI/2, PI/2]の範囲で、高さ半分
+  //  [top]
+  //  +------+------+
+  //  |＿＿__|＿＿__|
+  //  |￣￣￣|￣￣￣|
+  //  +------+------+
+  //  [side]
+  //  +------+------+
+  //  |      |______|
+  //  |____／|      |
+  //  +------+------+
+  var dx = blockSize*2; var dy = blockSize_; var dx_ = dx/2; var dy_ = dy/2;
+  var ndiv = 20;
+  var xxlist = [];
+  var yylist = [];
+  var xxadj = 0;
+  var yyadj = 0;
+  for (var i = 0; i < ndiv+1; ++i) {
+      var xx = i/ndiv*dx - dx_;
+      var vrad = i/ndiv*Math.PI - PI_;
+      var yy = Math.sin(vrad)*dy_ + dy_;
+      xxlist.push(xx+xxadj);
+      yylist.push(yy+yyadj);
+  }
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pz = railIntr_;
+  var pxyzlist = [[-1, -1, pz],
+                  [-1, -1, -pz]];
+  var adjxlist = [blockSize_*2, blockSize_*1, blockSize_*2, blockSize_*1];
+  var adjzlist = [blockSize_*1, blockSize_*2, blockSize_*1, blockSize_*2];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var i = 0; i < ndiv; ++i) {
+    var xx1 = xxlist[i]; var yy1 = yylist[i];
+    var xx2 = xxlist[i+1]; var yy2 = yylist[i+1];
+    var sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+    var sx_ = sx/2;
+    var px = (xx1+xx2)/2;
+    var py = (yy1+yy2)/2;
+    var ang=Math.atan((yy1-yy2)/(xx1-xx2));
+    var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+    for (var ii = 0; ii < pxyzlist.length; ++ii) {
+      var pzz = pxyzlist[ii][2];
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pzz),
+                           railQuat);
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pzz));
+      viRail2Mesh.quaternion.copy(railQuat);
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_07(x,y,z, rot) {
+  // rail_arc_s
+  // rail_arc10
+  // レール　左右曲 R90（小径）　10x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |  *---|
+  //  |  ||~~|
+  //  +------+
+  var rinn = (10 - railIntr)/2; // 内側の半径
+  var rout = (10 + railIntr)/2; // 外側の半径
+  var rout2 = 10; // ガイドレール（大外枠）の半径
+  var ndiv = 10;  // 円弧（９０度）の分割数
+  var xxadj = -5;
+  var zzadj = -5;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list];
+  var opalist = [0.4, 0.4, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH];
+  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang = Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_08(x,y,z, rot) {
+  // rail_arc_m
+  // rail_arc20
+  // レール　左右曲 R90（中径）　20x20x20
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  var rinn = (10 - railIntr)/2 + 10; // 内側の半径
+  var rout = (10 + railIntr)/2 + 10; // 外側の半径
+  var rout2 = 20; // ガイドレール（大外枠）の半径
+  var ndiv = 10;  // 円弧（９０度）の分割数
+  var xxadj = -15;
+  var zzadj = -15;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list];
+  var opalist = [0.4, 0.4, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH];
+  var adjxlist = [blockSize_*3, blockSize_*3, blockSize_*1, blockSize_*1];
+  var adjzlist = [blockSize_*3, blockSize_*1, blockSize_*1, blockSize_*3];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Rail_08_2(x,y,z, rot) {
+  // rail_arc_m2
+  // レール　左右曲 R90（中径）　20x20x20
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  var rinn = (10 - railIntr)/2 + 10; // 内側の半径
+  var rout = (10 + railIntr)/2 + 10; // 外側の半径
+  var rout2 = 20; // ガイドレール（大外枠）の半径
+  var ndiv = 100;  // 円弧（９０度）の分割数
+  var xxadj = -15;
+  var zzadj = -15;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list];
+  var opalist = [0.4, 0.4, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH];
+  var adjxlist = [blockSize_*3, blockSize_*3, blockSize_*1, blockSize_*1];
+  var adjzlist = [blockSize_*3, blockSize_*1, blockSize_*1, blockSize_*3];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Rail_09(x,y,z, rot) {
+  // rail_arc_l
+  // rail_arc30
+  // レール　左右曲 R90（大径）　30x10x30
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+------+------+
+  //  |      :      |++++++|
+  //  |      :  ++++|++++++|
+  //  +- - - ++++- -+- - - +
+  //  |     ++      |      |
+  //  |    ++:      |      |
+  //  +- -++ + - - -+ - - -+
+  //  |  ++  :      :      |
+  //  |  ++  :      :      |
+  //  +------+------+------+
+  var rinn = (10 - railIntr)/2 + 20; // 内側の半径
+  var rout = (10 + railIntr)/2 + 20; // 外側の半径
+  var rout2 = 30; // ガイドレール（大外枠）の半径
+  var ndiv = 20;  // 円弧（９０度）の分割数
+  var xxadj = -25;
+  var zzadj = -25;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list];
+  var opalist = [0.4, 0.4, 0.1];
+  var sy = railw; var sz = railw;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH];
+  var adjxlist = [blockSize_*5, blockSize_*5, blockSize_*1, blockSize_*1];
+  var adjzlist = [blockSize_*5, blockSize_*1, blockSize_*1, blockSize_*5];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_15(x,y,z, rot) {
+  // rail_arc40
+  // レール　左右曲 R90（大径）　40x10x40
+  //   細い直方体２本で表現
+  // [top]
+  var rinn = (10 - railIntr)/2 + 30; // 内側の半径
+  var rout = (10 + railIntr)/2 + 30; // 外側の半径
+  var rout2 = 40; // ガイドレール（大外枠）の半径
+  var ndiv = 30;  // 円弧（９０度）の分割数
+  var xxadj = -40;
+  var zzadj = -40;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list];
+  var opalist = [0.4, 0.4, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH];
+  var adjxlist = [blockSize_*8, blockSize_*8, blockSize_*0, blockSize_*0];
+  var adjzlist = [blockSize_*8, blockSize_*0, blockSize_*0, blockSize_*8];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_16(x,y,z, rot) {
+  // rail_arc50
+  // レール　左右曲 R90（大径）　50x10x50
+  //   細い直方体２本で表現
+  // [top]
+  var rinn = (10 - railIntr)/2 + 40; // 内側の半径
+  var rout = (10 + railIntr)/2 + 40; // 外側の半径
+  var rout2 = 50; // ガイドレール（大外枠）の半径
+  var ndiv = 40;  // 円弧（９０度）の分割数
+  var xxadj = -50;
+  var zzadj = -50;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list, zzout2list];
+  var opalist = [0.4, 0.4, 0.1, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH, gardH*2];
+  var adjxlist = [blockSize_*10, blockSize_*10,blockSize_*0, blockSize_*0];
+  var adjzlist = [blockSize_*10, blockSize_*0, blockSize_*0, blockSize_*10];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_24(x,y,z, rot) {
+  // rail_arc90
+  // レール　左右曲 R90（大径）　90x10x90
+  //   細い直方体２本で表現
+  // [top]
+  var rinn = (10 - railIntr)/2 + 80; // 内側の半径
+  var rout = (10 + railIntr)/2 + 80; // 外側の半径
+  var rout2 = 90; // ガイドレール（大外枠）の半径
+  var ndiv = 80;  // 円弧（９０度）の分割数
+  var xxadj = -90;
+  var zzadj = -90;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list, zzout2list];
+  var opalist = [0.4, 0.4, 0.1, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH, gardH*2];
+  var adjxlist = [blockSize_*18, blockSize_*18,blockSize_*0, blockSize_*0];
+  var adjzlist = [blockSize_*18, blockSize_*0 ,blockSize_*0, blockSize_*18];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_17(x,y,z, rot) {
+  // rail_arc100
+  // レール　左右曲 R90（大径）　100x10x100
+  //   細い直方体２本で表現
+  // [top]
+  var rinn = (10 - railIntr)/2 + 90; // 内側の半径
+  var rout = (10 + railIntr)/2 + 90; // 外側の半径
+  var rout2 = 100; // ガイドレール（大外枠）の半径
+  var ndiv = 90;  // 円弧（９０度）の分割数
+  var xxadj = -100;
+  var zzadj = -100;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list, zzout2list];
+  var opalist = [0.4, 0.4, 0.1, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH, gardH*2];
+  var adjxlist = [blockSize_*20, blockSize_*20,blockSize_*0, blockSize_*0];
+  var adjzlist = [blockSize_*20, blockSize_*0 ,blockSize_*0, blockSize_*20];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_30(x,y,z, rot) {
+  // rail_arc110
+  // レール　左右曲 R90（大径）　110x10x110
+  //   細い直方体２本で表現
+  // [top]
+  var rinn = (10 - railIntr)/2 + 100; // 内側の半径
+  var rout = (10 + railIntr)/2 + 100; // 外側の半径
+  var rout2 = 110; // ガイドレール（大外枠）の半径
+  var ndiv = 100;  // 円弧（９０度）の分割数
+  var xxadj = -110;
+  var zzadj = -110;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list, zzout2list];
+  var opalist = [0.4, 0.4, 0.1, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH, gardH*2];
+  var adjxlist = [blockSize_*22, blockSize_*22,blockSize_*0, blockSize_*0];
+  var adjzlist = [blockSize_*22, blockSize_*0 ,blockSize_*0, blockSize_*22];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Rail_39(x,y,z, rot) {
+  // rail_arc200
+  // レール　左右曲 R90（大径）　200x10x200
+  //   細い直方体２本で表現
+  // [top]
+  var rinn = (10 - railIntr)/2 + 190; // 内側の半径
+  var rout = (10 + railIntr)/2 + 190; // 外側の半径
+  var rout2 = 200; // ガイドレール（大外枠）の半径
+  var ndiv = 190;  // 円弧（９０度）の分割数
+  var xxadj = -200;
+  var zzadj = -200;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list, zzout2list];
+  var opalist = [0.4, 0.4, 0.1, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH, gardH*2];
+  var adjxlist = [blockSize*20, blockSize*20,blockSize*0, blockSize*0];
+  var adjzlist = [blockSize*20, blockSize*0 ,blockSize*0, blockSize*20];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_40(x,y,z, rot) {
+  // rail_arc300
+  // レール　左右曲 R90（大径）　300x10x300
+  //   細い直方体２本で表現
+  // [top]
+  var rinn = (10 - railIntr)/2 + 290; // 内側の半径
+  var rout = (10 + railIntr)/2 + 290; // 外側の半径
+  var rout2 = 300; // ガイドレール（大外枠）の半径
+  var ndiv = 290;  // 円弧（９０度）の分割数
+  var xxadj = -300;
+  var zzadj = -300;
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var zzout2list = [];
+  for (var i = 0; i < ndiv+1; ++i) {
+      var vrad = i/ndiv*PI_;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      xxout2list.push(xx*rout2+xxadj);
+      zzout2list.push(zz*rout2+zzadj);
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list, xxout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list, zzout2list];
+  var opalist = [0.4, 0.4, 0.1, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pylist = [0, 0, gardH, gardH*2];
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjxlist = [blockSize*30, blockSize*30,blockSize*0, blockSize*0];
+  var adjzlist = [blockSize*30, blockSize*0 ,blockSize*0, blockSize*30];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var zzlist = zzlist2[ii];
+    var py = pylist[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Rail_31(x,y,z, rot) {
+  // rail_arc40v10
+  //   - 横ループ(hloop)を応用して 90度で切断
+  let rinn = (blockSize - railIntr)/2 + blockSize*3; // 内側の半径
+  let rout = (blockSize + railIntr)/2 + blockSize*3; // 外側の半径
+  let rout2 = blockSize*4; // ガイドレール（大外枠）の半径
+  let ndivR = 30;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let n = ndivR;  // 要素の個数  円弧（90度）分
+  let xxadj = 0;
+  let zzadj = 0;
+  let radlist = [];
+  let xxinnlist = [];
+  let zzinnlist = [];
+  let xxoutlist = [];
+  let zzoutlist = [];
+  let yylist = [];
+  let xxguidelist = [];
+  let zzguidelist = [];
+  let yyguidelist = [];
+  let yyguide2list = [];
+  let ystep = blockSize/n;
+  for (let i = 0; i < n+1; ++i) {
+      let vrad = i*drad;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let yy = i*ystep;
+      radlist.push(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      yylist.push(yy);
+      xxguidelist.push(xx*rout2+xxadj);
+      zzguidelist.push(zz*rout2+xxadj);
+      yyguidelist.push(yy + gardH);
+      yyguide2list.push(yy + gardH*2);
+  }
+  let xxxlist = [xxinnlist, xxoutlist, xxguidelist, xxguidelist];
+  let yyylist = [yylist   , yylist   , yyguidelist, yyguide2list];
+  let zzzlist = [zzinnlist, zzoutlist, zzguidelist, zzguidelist];
+  let sy = 1, sz = 1;
+  let sy_ = sy/2, sz_ = sz/2;
+  let adjxlist = [blockSize_*0, blockSize_*0, blockSize_*8, blockSize_*8];
+  let adjzlist = [blockSize_*0, blockSize_*8, blockSize_*8, blockSize_*0];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xxlist = xxxlist[ii];
+    let yylist = yyylist[ii];
+    let zzlist = zzzlist[ii];
+    for (let i = 0; i < n; ++i) {
+      let vrad = radlist[i];
+      let xx1 = xxlist[i]  , zz1 = zzlist[i], yy = yylist[i];
+      let xx2 = xxlist[i+1], zz2 = zzlist[i+1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let pz = (zz1+zz2)/2;
+      let py = yy;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      // let railQuat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.sin(vrad), 0, Math.cos(vrad)), -0.3);
+      let railQuat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.18);
+      let railQuat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      let railQuat = railQuat1.mult(railQuat2);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_32(x,y,z, rot) {
+  // rail_arc40v10r
+  //   - 横ループ(hloop)を応用して 90度で切断
+  let rinn = (blockSize - railIntr)/2 + blockSize*3; // 内側の半径
+  let rout = (blockSize + railIntr)/2 + blockSize*3; // 外側の半径
+  let rout2 = blockSize*4; // ガイドレール（大外枠）の半径
+  let ndivR = 30;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let n = ndivR;  // 要素の個数  円弧（90度）分
+  let xxadj = 0;
+  let zzadj = 0;
+  let radlist = [];
+  let xxinnlist = [];
+  let zzinnlist = [];
+  let xxoutlist = [];
+  let zzoutlist = [];
+  let yylist = [];
+  let xxguidelist = [];
+  let zzguidelist = [];
+  let yyguidelist = [];
+  let yyguide2list = [];
+  let ystep = blockSize/n;
+  for (let i = 0; i < n+1; ++i) {
+      let vrad = i*drad;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let yy = -i*ystep;
+      radlist.push(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      yylist.push(yy);
+      xxguidelist.push(xx*rout2+xxadj);
+      zzguidelist.push(zz*rout2+xxadj);
+      yyguidelist.push(yy + gardH);
+      yyguide2list.push(yy + gardH*2);
+  }
+  let xxxlist = [xxinnlist, xxoutlist, xxguidelist, xxguidelist];
+  let yyylist = [yylist   , yylist   , yyguidelist, yyguide2list];
+  let zzzlist = [zzinnlist, zzoutlist, zzguidelist, zzguidelist];
+  let sy = 1, sz = 1;
+  let sy_ = sy/2, sz_ = sz/2;
+  let adjxlist = [blockSize_*0, blockSize_*0, blockSize_*8, blockSize_*8];
+  let adjzlist = [blockSize_*0, blockSize_*8, blockSize_*8, blockSize_*0];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_*3;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xxlist = xxxlist[ii];
+    let yylist = yyylist[ii];
+    let zzlist = zzzlist[ii];
+    for (let i = 0; i < n; ++i) {
+      let vrad = radlist[i];
+      let xx1 = xxlist[i]  , zz1 = zzlist[i], yy = yylist[i];
+      let xx2 = xxlist[i+1], zz2 = zzlist[i+1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let pz = (zz1+zz2)/2;
+      let py = yy;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), 0.18);
+      let railQuat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      let railQuat = railQuat1.mult(railQuat2);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+
+export function Rail_33(x,y,z, rot) {
+  // rail_arc50v10
+  //   - 横ループ(hloop)を応用して 90度で切断
+  let rinn = (blockSize - railIntr)/2 + blockSize*4; // 内側の半径
+  let rout = (blockSize + railIntr)/2 + blockSize*4; // 外側の半径
+  let rout2 = blockSize*5; // ガイドレール（大外枠）の半径
+  let ndivR = 40;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let n = ndivR;  // 要素の個数  円弧（90度）分
+  let xxadj = 0;
+  let zzadj = 0;
+  let radlist = [];
+  let xxinnlist = [];
+  let zzinnlist = [];
+  let xxoutlist = [];
+  let zzoutlist = [];
+  let yylist = [];
+  let xxguidelist = [];
+  let zzguidelist = [];
+  let yyguidelist = [];
+  let yygui2delist = [];
+  let ystep = blockSize/n;
+  for (let i = 0; i < n+1; ++i) {
+      let vrad = i*drad;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let yy = i*ystep;
+      radlist.push(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      yylist.push(yy);
+      xxguidelist.push(xx*rout2+xxadj);
+      zzguidelist.push(zz*rout2+xxadj);
+      yyguidelist.push(yy + gardH);
+      yygui2delist.push(yy + gardH*2);
+  }
+  let xxxlist = [xxinnlist, xxoutlist, xxguidelist, xxguidelist];
+  let yyylist = [yylist   , yylist   , yyguidelist, yygui2delist];
+  let zzzlist = [zzinnlist, zzoutlist, zzguidelist, zzguidelist];
+  let sy = 1, sz = 1;
+  let sy_ = sy/2, sz_ = sz/2;
+  let adjxlist = [blockSize_*0, blockSize_*0 , blockSize_*10, blockSize_*10];
+  let adjzlist = [blockSize_*0, blockSize_*10, blockSize_*10, blockSize_*0];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xxlist = xxxlist[ii];
+    let yylist = yyylist[ii];
+    let zzlist = zzzlist[ii];
+    for (let i = 0; i < n; ++i) {
+      let vrad = radlist[i];
+      let xx1 = xxlist[i]  , zz1 = zzlist[i], yy = yylist[i];
+      let xx2 = xxlist[i+1], zz2 = zzlist[i+1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let pz = (zz1+zz2)/2;
+      let py = yy;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.15);
+      let railQuat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      let railQuat = railQuat1.mult(railQuat2);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_34(x,y,z, rot) {
+  // rail_arc50v10r
+  //   - 横ループ(hloop)を応用して 90度で切断
+  let rinn = (blockSize - railIntr)/2 + blockSize*4; // 内側の半径
+  let rout = (blockSize + railIntr)/2 + blockSize*4; // 外側の半径
+  let rout2 = blockSize*5; // ガイドレール（大外枠）の半径
+  let ndivR = 40;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let n = ndivR;  // 要素の個数  円弧（90度）分
+  let xxadj = 0;
+  let zzadj = 0;
+  let radlist = [];
+  let xxinnlist = [];
+  let zzinnlist = [];
+  let xxoutlist = [];
+  let zzoutlist = [];
+  let yylist = [];
+  let xxguidelist = [];
+  let zzguidelist = [];
+  let yyguidelist = [];
+  let yyguide2list = [];
+  let ystep = blockSize/n;
+  for (let i = 0; i < n+1; ++i) {
+      let vrad = i*drad;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let yy = -i*ystep;
+      radlist.push(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      yylist.push(yy);
+      xxguidelist.push(xx*rout2+xxadj);
+      zzguidelist.push(zz*rout2+xxadj);
+      yyguidelist.push(yy + gardH);
+      yyguide2list.push(yy + gardH*2);
+  }
+  let xxxlist = [xxinnlist, xxoutlist, xxguidelist, xxguidelist];
+  let yyylist = [yylist   , yylist   , yyguidelist, yyguide2list];
+  let zzzlist = [zzinnlist, zzoutlist, zzguidelist, zzguidelist];
+  let sy = 1, sz = 1;
+  let sy_ = sy/2, sz_ = sz/2;
+  let adjxlist = [blockSize_*0, blockSize_*0 , blockSize_*10, blockSize_*10];
+  let adjzlist = [blockSize_*0, blockSize_*10, blockSize_*10, blockSize_*0];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_*3;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xxlist = xxxlist[ii];
+    let yylist = yyylist[ii];
+    let zzlist = zzzlist[ii];
+    for (let i = 0; i < n; ++i) {
+      let vrad = radlist[i];
+      let xx1 = xxlist[i]  , zz1 = zzlist[i], yy = yylist[i];
+      let xx2 = xxlist[i+1], zz2 = zzlist[i+1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let pz = (zz1+zz2)/2;
+      let py = yy;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), 0.15);
+      let railQuat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      let railQuat = railQuat1.mult(railQuat2);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_35(x,y,z, rot) {
+  // rail_arc60v10
+  //   - 横ループ(hloop)を応用して 90度で切断
+  let rinn = (blockSize - railIntr)/2 + blockSize*5; // 内側の半径
+  let rout = (blockSize + railIntr)/2 + blockSize*5; // 外側の半径
+  let rout2 = blockSize*6; // ガイドレール（大外枠）の半径
+  let ndivR = 50;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let n = ndivR;  // 要素の個数  円弧（90度）分
+  let xxadj = 0;
+  let zzadj = 0;
+  let radlist = [];
+  let xxinnlist = [];
+  let zzinnlist = [];
+  let xxoutlist = [];
+  let zzoutlist = [];
+  let yylist = [];
+  let xxguidelist = [];
+  let zzguidelist = [];
+  let yyguidelist = [];
+  let yyguide2list = [];
+  let ystep = blockSize/n;
+  for (let i = 0; i < n+1; ++i) {
+      let vrad = i*drad;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let yy = i*ystep;
+      radlist.push(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      yylist.push(yy);
+      xxguidelist.push(xx*rout2+xxadj);
+      zzguidelist.push(zz*rout2+xxadj);
+      yyguidelist.push(yy + gardH);
+      yyguide2list.push(yy + gardH*2);
+  }
+  let xxxlist = [xxinnlist, xxoutlist, xxguidelist, xxguidelist];
+  let yyylist = [yylist   , yylist   , yyguidelist, yyguide2list];
+  let zzzlist = [zzinnlist, zzoutlist, zzguidelist, zzguidelist];
+  let sy = 1, sz = 1;
+  let sy_ = sy/2, sz_ = sz/2;
+  let adjxlist = [blockSize_*0, blockSize_*0 , blockSize_*12, blockSize_*12];
+  let adjzlist = [blockSize_*0, blockSize_*12, blockSize_*12, blockSize_*0];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xxlist = xxxlist[ii];
+    let yylist = yyylist[ii];
+    let zzlist = zzzlist[ii];
+    for (let i = 0; i < n; ++i) {
+      let vrad = radlist[i];
+      let xx1 = xxlist[i]  , zz1 = zzlist[i], yy = yylist[i];
+      let xx2 = xxlist[i+1], zz2 = zzlist[i+1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let pz = (zz1+zz2)/2;
+      let py = yy;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.1);
+      let railQuat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      let railQuat = railQuat1.mult(railQuat2);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_36(x,y,z, rot) {
+  // rail_arc60v10r
+  //   - 横ループ(hloop)を応用して 90度で切断
+  let rinn = (blockSize - railIntr)/2 + blockSize*5; // 内側の半径
+  let rout = (blockSize + railIntr)/2 + blockSize*5; // 外側の半径
+  let rout2 = blockSize*6; // ガイドレール（大外枠）の半径
+  let ndivR = 50;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let n = ndivR;  // 要素の個数  円弧（90度）分
+  let xxadj = 0;
+  let zzadj = 0;
+  let radlist = [];
+  let xxinnlist = [];
+  let zzinnlist = [];
+  let xxoutlist = [];
+  let zzoutlist = [];
+  let yylist = [];
+  let xxguidelist = [];
+  let zzguidelist = [];
+  let yyguidelist = [];
+  let yyguide2list = [];
+  let ystep = blockSize/n;
+  for (let i = 0; i < n+1; ++i) {
+      let vrad = i*drad;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let yy = -i*ystep;
+      radlist.push(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      yylist.push(yy);
+      xxguidelist.push(xx*rout2+xxadj);
+      zzguidelist.push(zz*rout2+xxadj);
+      yyguidelist.push(yy + gardH);
+      yyguide2list.push(yy + gardH*2);
+  }
+  let xxxlist = [xxinnlist, xxoutlist, xxguidelist, xxguidelist];
+  let yyylist = [yylist   , yylist   , yyguidelist, yyguide2list];
+  let zzzlist = [zzinnlist, zzoutlist, zzguidelist, zzguidelist];
+  let sy = 1, sz = 1;
+  let sy_ = sy/2, sz_ = sz/2;
+  let adjxlist = [blockSize_*0, blockSize_*0 , blockSize_*12, blockSize_*12];
+  let adjzlist = [blockSize_*0, blockSize_*12, blockSize_*12, blockSize_*0];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_*3;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xxlist = xxxlist[ii];
+    let yylist = yyylist[ii];
+    let zzlist = zzzlist[ii];
+    for (let i = 0; i < n; ++i) {
+      let vrad = radlist[i];
+      let xx1 = xxlist[i]  , zz1 = zzlist[i], yy = yylist[i];
+      let xx2 = xxlist[i+1], zz2 = zzlist[i+1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let pz = (zz1+zz2)/2;
+      let py = yy;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), 0.1);
+      let railQuat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      let railQuat = railQuat1.mult(railQuat2);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_10(x,y,z, rot) {
+  // rail_st_R45
+  // レール　直線（ななめR45)　10x10x20
+  // [top]
+  //  +------+
+  //  |      |
+  //  |    ／|
+  //  +------+
+  //  |／    |
+  //  |      |
+  //  +------+
+  var xyzlist1 = [[-blockSize_, 0, railIntrR45+railPadR45],
+                  [ blockSize_, 0, -railPadR45],];
+  var xyzlist2 = [[-blockSize_, 0, railPadR45],
+                  [ blockSize_, 0, -railIntrR45-railPadR45],];
+  var xyzlist3 = [[-blockSize_, 0, blockSize_],
+                  [ blockSize_, 0, -blockSize_],];
+  // var xxxlist = [xyzlist1, xyzlist2, xyzlist3]; // 確認用
+  // var opalist = [0.4, 0.4, 0.1]; // 確認用
+  // var sy = 0.1; var sz = 0.1;
+  var xxxlist = [xyzlist1, xyzlist2];
+  var opalist = [0.4, 0.4];
+  var sy = railw; var sz = railw;
+  var sy_ = sy/2; var sz_ = sz/2;
+//  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize;
+  var adjxlist = [blockSize_*1, blockSize_*2, blockSize_*1, blockSize_*2];
+  var adjzlist = [blockSize_*2, blockSize_*1, blockSize_*2, blockSize_*1];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var ndiv = xyzlist.length-1;
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Rail_41(x,y,z, rot) {
+  // rail_st_R45_50
+  // レール　直線（ななめR45)　50x10x100
+  // [top]
+  //  +------+
+  //  |      |
+  //  |    ／|
+  //  +------+
+  //  |／    |
+  //  |      |
+  //  +------+
+  let xyzlist1 = [[-blockSize_*5, 0, blockSize_*4+railIntrR45+railPadR45],
+                  [ blockSize_*5, 0,-blockSize_*4-railPadR45],];
+  let xyzlist2 = [[-blockSize_*5, 0, blockSize_*4+railPadR45],
+                  [ blockSize_*5, 0,-blockSize_*4-railIntrR45-railPadR45],];
+  let xyzlist3 = [[-blockSize_*5, 0, blockSize_*5],
+                  [ blockSize_*5, 0, -blockSize_*5],];
+  // let xxxlist = [xyzlist1, xyzlist2, xyzlist3]; // 確認用
+  // let opalist = [0.4, 0.4, 0.1]; // 確認用
+  // let sy = 0.1; let sz = 0.1;
+  let xxxlist = [xyzlist1, xyzlist2];
+  let opalist = [0.4, 0.4];
+  let sy = railw; let sz = railw;
+  let sy_ = sy/2; let sz_ = sz/2;
+//  let adjx = blockSize_; let adjy = blockSize_; let adjz = blockSize;
+  let adjxlist = [blockSize_*5, blockSize_*6, blockSize_*5, blockSize_*6];
+  let adjzlist = [blockSize_*6, blockSize_*5, blockSize_*6, blockSize_*5];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xyzlist = xxxlist[ii];
+    let opacity = opalist[ii];
+    let ndiv = xyzlist.length-1;
+    for (let i = 0; i < ndiv; ++i) {
+      let xx1 = xyzlist[i][0]; let yy1 = xyzlist[i][1]; let zz1 = xyzlist[i][2];
+      let xx2 = xyzlist[i+1][0]; let yy2 = xyzlist[i+1][1]; let zz2 = xyzlist[i+1][2];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = (zz1+zz2)/2;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_37(x,y,z, rot) {
+  // rail_st_R45_100
+  // レール　直線（ななめR45)　100x10x200
+  // [top]
+  //  +------+
+  //  |      |
+  //  |    ／|
+  //  +------+
+  //  |／    |
+  //  |      |
+  //  +------+
+  let xyzlist1 = [[-blockSize_*10, 0, blockSize_*9+railIntrR45+railPadR45],
+                  [ blockSize_*10, 0,-blockSize_*9-railPadR45],];
+  let xyzlist2 = [[-blockSize_*10, 0, blockSize_*9+railPadR45],
+                  [ blockSize_*10, 0,-blockSize_*9-railIntrR45-railPadR45],];
+  let xyzlist3 = [[-blockSize_*10, 0, blockSize_*10],
+                  [ blockSize_*10, 0, -blockSize_*10],];
+  // let xxxlist = [xyzlist1, xyzlist2, xyzlist3]; // 確認用
+  // let opalist = [0.4, 0.4, 0.1]; // 確認用
+  // // let sy = 0.1; let sz = 0.1;
+  let xxxlist = [xyzlist1, xyzlist2];
+  let opalist = [0.4, 0.4];
+  let sy = railw; let sz = railw;
+  let sy_ = sy/2; let sz_ = sz/2;
+//  let adjx = blockSize_; let adjy = blockSize_; let adjz = blockSize;
+  let adjxlist = [blockSize_*10, blockSize_*11, blockSize_*10, blockSize_*11];
+  let adjzlist = [blockSize_*11, blockSize_*10, blockSize_*11, blockSize_*10];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xyzlist = xxxlist[ii];
+    let opacity = opalist[ii];
+    let ndiv = xyzlist.length-1;
+    for (let i = 0; i < ndiv; ++i) {
+      let xx1 = xyzlist[i][0]; let yy1 = xyzlist[i][1]; let zz1 = xyzlist[i][2];
+      let xx2 = xyzlist[i+1][0]; let yy2 = xyzlist[i+1][1]; let zz2 = xyzlist[i+1][2];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = (zz1+zz2)/2;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Rail_11(x,y,z, rot) {
+  // rail_st_R45_r
+  // レール　直線（ななめR45)　20x10x10
+  //  [top]
+  //  +-----+-----+
+  //  |     |／   |
+  //  |   ／|     |
+  //  +-----+-----+
+  var xyzlist1 = [[-blockSize_-railIntrR45_, 0, blockSize_],  // 上側
+                  [ blockSize_-railIntrR45_, 0, -blockSize_],];
+  var xyzlist2 = [[-blockSize_+railIntrR45_, 0, blockSize_],  // 下側
+                  [ blockSize_+railIntrR45_, 0, -blockSize_],];
+  var xyzlist3 = [[-blockSize_, 0, blockSize_],    // 中央
+                  [ blockSize_, 0, -blockSize_],];
+  var xxxlist = [xyzlist1, xyzlist2 // , xyzlist3
+                 ];
+  var opalist = [0.4, 0.4  // , 0.1
+                 ];
+  var sy = railw; var sz = railw;
+  var sy_ = sy/2; var sz_ = sz/2;
+//  var adjx = blockSize_; var adjy = 0; var adjz = 0;
+  var adjxlist = [blockSize_*2, blockSize_*1, blockSize_*2, blockSize_*1];
+  var adjzlist = [blockSize_*1, blockSize_*2, blockSize_*1, blockSize_*2];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var ndiv = xyzlist.length-1;
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_42(x,y,z, rot) {
+  // rail_st_R45_50_r
+  // レール　直線（ななめR45)　100x10x50
+  //  [top]
+  //  +-----+-----+
+  //  |     |／   |
+  //  |   ／|     |
+  //  +-----+-----+
+  let xyzlist1 = [[-blockSize_*5-railIntrR45_, 0, blockSize_*5],  // 上側
+                  [ blockSize_*5-railIntrR45_, 0,-blockSize_*5],];
+  let xyzlist2 = [[-blockSize_*5+railIntrR45_, 0, blockSize_*5],  // 下側
+                  [ blockSize_*5+railIntrR45_, 0,-blockSize_*5],];
+  let xyzlist3 = [[-blockSize_*5, 0, blockSize_*5],    // 中央
+                  [ blockSize_*5, 0,-blockSize_*5],];
+  let xxxlist = [xyzlist1, xyzlist2 // , xyzlist3
+                ];
+  let opalist = [0.4, 0.4 //  , 0.1
+                ];
+  let sy = railw; let sz = railw;
+  let sy_ = sy/2; let sz_ = sz/2;
+  let adjxlist = [blockSize_*6, blockSize_*5, blockSize_*6, blockSize_*5];
+  let adjzlist = [blockSize_*5, blockSize_*6, blockSize_*5, blockSize_*6];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xyzlist = xxxlist[ii];
+    let opacity = opalist[ii];
+    let ndiv = xyzlist.length-1;
+    for (let i = 0; i < ndiv; ++i) {
+      let xx1 = xyzlist[i][0]; let yy1 = xyzlist[i][1]; let zz1 = xyzlist[i][2];
+      let xx2 = xyzlist[i+1][0]; let yy2 = xyzlist[i+1][1]; let zz2 = xyzlist[i+1][2];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = (zz1+zz2)/2;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_38(x,y,z, rot) {
+  // rail_st_R45_100_r
+  // レール　直線（ななめR45)　200x10x100
+  //  [top]
+  //  +-----+-----+
+  //  |     |／   |
+  //  |   ／|     |
+  //  +-----+-----+
+  let xyzlist1 = [[-blockSize_*10-railIntrR45_, 0, blockSize_*10],  // 上側
+                  [ blockSize_*10-railIntrR45_, 0,-blockSize_*10],];
+  let xyzlist2 = [[-blockSize_*10+railIntrR45_, 0, blockSize_*10],  // 下側
+                  [ blockSize_*10+railIntrR45_, 0,-blockSize_*10],];
+  let xyzlist3 = [[-blockSize_*10, 0, blockSize_*10],    // 中央
+                  [ blockSize_*10, 0,-blockSize_*10],];
+  let xxxlist = [xyzlist1, xyzlist2 // , xyzlist3
+                ];
+  let opalist = [0.4, 0.4 //  , 0.1
+                ];
+  let sy = railw; let sz = railw;
+  let sy_ = sy/2; let sz_ = sz/2;
+  let adjxlist = [blockSize_*11, blockSize_*10, blockSize_*11, blockSize_*10];
+  let adjzlist = [blockSize_*10, blockSize_*11, blockSize_*10, blockSize_*11];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xyzlist = xxxlist[ii];
+    let opacity = opalist[ii];
+    let ndiv = xyzlist.length-1;
+    for (let i = 0; i < ndiv; ++i) {
+      let xx1 = xyzlist[i][0]; let yy1 = xyzlist[i][1]; let zz1 = xyzlist[i][2];
+      let xx2 = xyzlist[i+1][0]; let yy2 = xyzlist[i+1][1]; let zz2 = xyzlist[i+1][2];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = (zz1+zz2)/2;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_11_2(x,y,z, rot) {
+  // rail_st_R45_2
+  // レール　直線（ななめR45)　10x10x10
+  //  [top]
+  //  +-----+
+  //  |   ／|
+  //  | ／／|
+  //  +-----+
+  var xyzlist1 = [[ -railIntrR45_, 0, blockSize_],  // 上側
+                  [  blockSize_, 0, -railIntrR45_],];
+  var xyzlist2 = [[  railIntrR45_, 0, blockSize_],  // 下側
+                  [    blockSize_, 0, railIntrR45_],];
+  var xyzlist3 = [[          0, 0, blockSize_],    // 中央
+                  [ blockSize_, 0, 0],];
+  var xxxlist = [xyzlist1, xyzlist2, // xyzlist3
+                ];
+  var opalist = [0.4, 0.4, // 0.1
+                ];
+  var sy = railw; var sz = railw;
+//  var sy = 0.1; var sz = 0.1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var ndiv = xyzlist.length-1;
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_12(x,y,z, rot) {
+  // rail_arc_R45
+  // レール　水平（直線＋ななめR45)　20x10x20
+  //  [top]
+  //  +-----+-----+
+  //  |     |＿＿ |
+  //  |   ／|     |
+  //  +-----+-----+
+  //  |／   |     |
+  //  |     |     |
+  //  +-----+-----+
+  let adj = 2.05;  // 補正値：円弧のX軸方向のずれ
+  // 左下ななめの下段
+  // let v = 0.65; // 補正値：上手く計算できないので決め打ちで（汗
+  let v = -0.95; // 補正値：上手く計算できないので決め打ちで（汗
+  let xyzlist1 = [[-blockSize, 0, blockSize_+railIntrR45_],
+                  [         v, 0, -blockSize_+railIntrR45_-v],];
+  // 右上水平の下段
+  let xyzlist2 = [[ adj, 0, -railPad],
+                  [ blockSize, 0, -railPad],];
+  // 左下ななめの上段
+  // v = 3.6; // 補正値：上手く計算できないので決め打ちで（汗
+  v = 2; // 補正値：上手く計算できないので決め打ちで（汗
+  let xyzlist3 = [[-blockSize, 0, blockSize_-railIntrR45_],
+                  [        -v, 0, -blockSize_-railIntrR45_+v],
+                  ];
+  // 右上水平の上段
+  let xyzlist4 = [[ adj, 0, -railIntr-railPad],
+                  [ blockSize, 0, -railIntr-railPad],];
+  // ガードレール：左下ななめ上段
+  v = 2.33; // 補正値：上手く計算できないので決め打ちで（汗
+  let v2 = (ballR+railw)*1.414;
+  let xyzlist5 = [[-blockSize, gardH, blockSize_-v2],
+                  [        -v, gardH, -blockSize_-v2+v],
+                  [-blockSize, gardH*2, blockSize_-v2],
+                  [        -v, gardH*2, -blockSize_-v2+v],
+                  ];
+  // v = 5; // 補正値：上手く計算できないので決め打ちで（汗
+  // let xyzlist5 = [[-blockSize, gardH, blockSize_-blockSizeR45_],
+  //                 [        -v, gardH, -blockSize_-blockSizeR45_+v],
+  //                 ];
+  // ガードレール：右上水平
+  let xyzlist6 = [[ adj, gardH, -blockSize_-ballR-railw],
+                  [ blockSize, gardH, -blockSize_-ballR-railw],
+                  [ adj, gardH*2, -blockSize_-ballR-railw],
+                  [ blockSize, gardH*2, -blockSize_-ballR-railw],];
+  // 確認用中心線 （左下ななめ）and （右上水平）
+  let xyzlist99 = [[-blockSize, 0,  blockSize_],
+                  [         0, 0, -blockSize_],
+                  [ blockSize, 0, -blockSize_],];
+  // ななめと水平の接合部／曲線部分
+  let rinn = (blockSize - railIntr)/2; // 内側の半径
+  let rout = (blockSize + railIntr)/2; // 外側の半径
+  let rout2 = blockSize_+ballR+railw; // ガイドレール（大外枠）の半径
+  let ndivR = 10;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let narc = 5;  // 円弧の要素の数
+//  let xxadj = 0; let zzadj = 0;
+  let xxadj = adj; let zzadj = 0;
+  let xyzinnlist = [];
+  let xyzoutlist = [];
+  let xyzout2list = [];
+  let xyzout3list = [];
+  for (let i = 0; i < narc+1; ++i) {
+      let vrad = - i*drad - PI_;
+      let xx = Math.cos(vrad);
+      let yy = 0;
+      let zz = Math.sin(vrad);
+      xyzinnlist.push([xx*rinn+xxadj, yy, zz*rinn+zzadj]);
+      xyzoutlist.push([xx*rout+xxadj, yy, zz*rout+zzadj]);
+      xyzout2list.push([xx*rout2+xxadj, gardH, zz*rout2+zzadj]);
+      xyzout3list.push([xx*rout2+xxadj, gardH*2, zz*rout2+zzadj]);
+  }
+  let xxxlist = [xyzlist1, xyzlist2, xyzlist3, xyzlist4, xyzlist5, xyzlist6, //  xyzlist99,
+                 xyzinnlist, xyzoutlist, xyzout2list, xyzout3list];
+  let opalist = [0.4, 0.4, 0.4, 0.4, 0.1, 0.1, // 0.1,
+                 0.4, 0.4, 0.1, 0.1];
+  let sy = railw; let sz = railw;
+//  let sy = 0.1; let sz = 0.1;
+  let sy_ = sy/2; let sz_ = sz/2;
+  let adjx = blockSize; let adjy = blockSize_; let adjz = blockSize;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xyzlist = xxxlist[ii];
+    let opacity = opalist[ii];
+    let ndiv = xyzlist.length-1;
+    for (let i = 0; i < ndiv; ++i) {
+      let xx1 = xyzlist[i][0]; let yy1 = xyzlist[i][1]; let zz1 = xyzlist[i][2];
+      let xx2 = xyzlist[i+1][0]; let yy2 = xyzlist[i+1][1]; let zz2 = xyzlist[i+1][2];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = (zz1+zz2)/2;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Rail_13(x,y,z, rot) {
+  // rail_arc_R45_r
+  // レール　水平（直線＋ななめR45)　10x10x20
+  //  [top]
+  //  +-----+-----+
+  //  | ＿＿|     |
+  //  |     |＼   |
+  //  +-----+-----+
+  //  |     |   ＼|
+  //  |     |     |
+  //  +-----+-----+
+  let adj = -2.05;  // 補正値：円弧のX軸方向のずれ
+  // 右下ななめの下段
+  let v = -0.95; // 補正値：上手く計算できないので決め打ちで（汗
+  let xyzlist1 = [[ blockSize, 0, blockSize_+railIntrR45_],
+                  [        -v, 0, -blockSize_+railIntrR45_-v],];
+  // 左上水平の下段
+  let xyzlist2 = [[ adj, 0, -railPad],
+                  [ -blockSize, 0, -railPad],];
+  // 右下ななめの上段
+  // let v = 3.6; // 補正値：上手く計算できないので決め打ちで（汗
+  v = 2.00; // 補正値：上手く計算できないので決め打ちで（汗
+  let xyzlist3 = [[ blockSize, 0, blockSize_-railIntrR45_],
+                  [         v, 0, -blockSize_-railIntrR45_+v],
+                ];
+  // 左上水平の上段
+  let xyzlist4 = [[ adj, 0, -railIntr-railPad],
+                  [-blockSize, 0, -railIntr-railPad],
+                  ];
+  // ガードレール：右下ななめ上段
+  v = 2.33 // 補正値：上手く計算できないので決め打ちで（汗
+  // let v2 = (blockSize_+ballR+railw)*1.414;
+  let v2 = (ballR+railw)*1.414;
+  let xyzlist5 = [[ blockSize, gardH, blockSize_-v2],
+                  [         v, gardH, -blockSize_-v2+v],
+                  [ blockSize, gardH*2, blockSize_-v2],
+                  [         v, gardH*2, -blockSize_-v2+v],
+                ];
+//  let v2 = (railw/2)*1.414;
+  // let xyzlist5 = [[ blockSize, gardH, blockSize_-blockSizeR45_+v2],
+  //                 [         v, gardH, -blockSize_-blockSizeR45_+v+v2],
+  //               ];
+  // ガードレール：左上水平
+  let xyzlist6 = [[        adj, gardH, -blockSize_-ballR-railw],
+                  [ -blockSize, gardH, -blockSize_-ballR-railw],
+                  [        adj, gardH*2, -blockSize_-ballR-railw],
+                  [ -blockSize, gardH*2, -blockSize_-ballR-railw],
+                  ];
+  // 確認用中心線 （右下ななめ）and （左上水平）
+  let xyzlist99 = [[blockSize, 0,  blockSize_],
+                  [         0, 0, -blockSize_],
+                  [-blockSize, 0, -blockSize_],];
+  // ななめと水平の接合部／曲線部分
+  let rinn = (blockSize - railIntr)/2; // 内側の半径
+  let rout = (blockSize + railIntr)/2; // 外側の半径
+  let rout2 = blockSize_+ballR+railw; // ガイドレール（大外枠）の半径
+  let ndivR = 10;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let narc = 5;  // 円弧の要素の数
+  let xxadj = adj; let zzadj = 0;
+  let xyzinnlist = [];
+  let xyzoutlist = [];
+  let xyzout2list = [];
+  let xyzout3list = [];
+  for (let i = 0; i < narc+1; ++i) {
+      let vrad = - i*drad - PI_/2;
+      let xx = Math.cos(vrad);
+      let yy = 0;
+      let zz = Math.sin(vrad);
+      xyzinnlist.push([xx*rinn+xxadj, yy, zz*rinn+zzadj]);
+      xyzoutlist.push([xx*rout+xxadj, yy, zz*rout+zzadj]);
+//      xyzout2list.push([xx*rout2+xxadj, yy, zz*rout2+zzadj]);
+      xyzout2list.push([xx*rout2+xxadj, gardH, zz*rout2+zzadj]);
+      xyzout3list.push([xx*rout2+xxadj, gardH*2, zz*rout2+zzadj]);
+  }
+  let xxxlist = [xyzlist1, xyzlist2, xyzlist3, xyzlist4, xyzlist5, xyzlist6, // xyzlist99,
+                 xyzinnlist, xyzoutlist, xyzout2list, xyzout3list];
+  let opalist = [0.4, 0.4, 0.4, 0.4, 0.1, 0.1, // 0.1,
+                 0.4, 0.4, 0.1, 0.1];
+  let sy = railw; let sz = railw;
+//  let sy = 0.1; let sz = 0.1;
+  let sy_ = sy/2; let sz_ = sz/2;
+  let adjx = blockSize; let adjy = blockSize_; let adjz = blockSize;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xyzlist = xxxlist[ii];
+    let opacity = opalist[ii];
+    let n_ = xyzlist.length-1;
+    for (let i = 0; i < n_; ++i) {
+      let xx1 = xyzlist[i][0]; let yy1 = xyzlist[i][1]; let zz1 = xyzlist[i][2];
+      let xx2 = xyzlist[i+1][0]; let yy2 = xyzlist[i+1][1]; let zz2 = xyzlist[i+1][2];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = (zz1+zz2)/2;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Join_00(x,y,z, rot) {
+  // join_R45
+  // 合流：（直線＋ななめR45)　20x10x20
+  //  [top]
+  //  +-----+-----+
+  //  |＿＿ |＿＿ |
+  //  |   ／|     |
+  //  +-----+-----+
+  //  |／   |     |
+  //  |     |     |
+  //  +-----+-----+
+  // 左下ななめの下段
+  // var v = 1.2; // 補正値：上手く計算できないので決め打ちで（汗
+  var v = 0.3; // 補正値：上手く計算できないので決め打ちで（汗
+  var xyzlist1 = [[-blockSize, 0, blockSize_+railIntrR45_],
+                  [         v, 0, -blockSize_+railIntrR45_-v],];
+  // 水平(右)の下段
+  // var adj = 2.05;  // 補正値：円弧のX軸方向のずれ
+//  var adj = 1.2;  // 補正値：円弧のX軸方向のずれ
+  var adj = 0.3;  // 補正値：円弧のX軸方向のずれ
+  var xyzlist2 = [[ adj, 0, -railPad],
+                  [ blockSize, 0, -railPad],];
+  // 左下ななめの上段＋水平（左）の下段
+  // var v = blockSize_+2.2; // 補正値：上手く計算できないので決め打ちで（汗
+  var v = +1.8; // 補正値：上手く計算できないので決め打ちで（汗
+  var xyzlist3 = [[-blockSize, 0, blockSize_-railIntrR45_],
+                  [        -v, 0, -blockSize_-railIntrR45_+v],
+                  [-blockSize, 0, -railPad],
+                  ];
+  // 右上水平の上段
+  var xyzlist4 = [[-blockSize, 0, -railIntr-railPad],
+                  //[ adj, 0, -railIntr-railPad],
+                  [ blockSize, 0, -railIntr-railPad],];
+  // ガードレール：水平
+  var xyzlist6 = [// [ -blockSize, gardH, -blockSize],
+                  [ adj, gardH, -blockSize_-1.2],
+                  [ blockSize, gardH, -blockSize_-1.2],];
+  // 確認用中心線 （左下ななめ）and （水平）
+  // var pyy = -1.4;
+  var pyy = -0.4;
+  var xyzlist99 = [[-blockSize, pyy,  blockSize_],
+                   [         0, pyy, -blockSize_],
+                   [-blockSize, pyy, -blockSize_],
+                   [ blockSize, pyy, -blockSize_],];
+  var xxxlist = [xyzlist1, xyzlist2, xyzlist3, xyzlist4, xyzlist6, xyzlist99
+                ];
+  var opalist = [0.4, 0.4, 0.4, 0.4, 0.1, 0.1
+                ];
+  var sy = railw; var sz = railw;
+//  var sy = 0.1; var sz = 0.1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var adjx = blockSize; var adjy = blockSize_; var adjz = blockSize;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var ndiv = xyzlist.length-1;
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Join_01(x,y,z, rot) {
+  // join_R45_r
+  // 合流：（直線＋ななめR45 反転)　10x10x20
+  //  [top]
+  //  +-----+-----+
+  //  |＿＿ |＿＿ |
+  //  |     |＼   |
+  //  +-----+-----+
+  //  |     |   ＼|
+  //  |     |     |
+  //  +-----+-----+
+  // var adj = 2.05;  // 補正値：円弧のX軸方向のずれ
+  var adj = 1.2;  // 補正値：円弧のX軸方向のずれ
+  // 右下ななめの下段
+  var v = 1.2; // 補正値：上手く計算できないので決め打ちで（汗
+  var xyzlist1 = [[ blockSize, 0, blockSize_+railIntrR45_],
+                  [        -v, 0, -blockSize_+railIntrR45_-v],];
+  // 水平(左)の下段
+  var xyzlist2 = [[ -adj, 0, -railPad],
+                  [ -blockSize, 0, -railPad],];
+  // 右下ななめの上段＋水平（左）の下段
+  var v = blockSize_+2.2; // 補正値：上手く計算できないので決め打ちで（汗
+  var xyzlist3 = [[ blockSize, 0, blockSize_-railIntrR45_],
+                  [         v, 0, -blockSize_-railIntrR45_+v],
+                  [ blockSize, 0, -railPad],
+                 ];
+  // 水平の上段
+  var xyzlist4 = [[-blockSize, 0, -railIntr-railPad],
+                  [ blockSize, 0, -railIntr-railPad],];
+  // ガードレール：水平
+  var xyzlist6 = [// [ -blockSize, gardH, -blockSize],
+                  [ -adj, gardH, -blockSize],
+                  [ -blockSize, gardH, -blockSize],];
+  // 確認用中心線 兼 落とさないためのガード （左下ななめ）and （水平）
+  var pyy = -1.4;
+  var xyzlist99 = [[ blockSize, pyy,  blockSize_],
+                   [         0, pyy, -blockSize_],
+                   [ blockSize, pyy, -blockSize_],
+                   [-blockSize, pyy, -blockSize_],];
+  var xxxlist = [xyzlist1, xyzlist2, xyzlist3, xyzlist4, xyzlist6, xyzlist99
+                ];
+  var opalist = [0.4, 0.4, 0.4, 0.4, 0.1, 0.1
+                ];
+  var sy = 1; var sz = 1;
+//  var sy = 0.1; var sz = 0.1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var adjx = blockSize; var adjy = blockSize_; var adjz = blockSize;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var ndiv = xyzlist.length-1;
+    for (var i = 0; i < ndiv; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Cross_00(x,y,z, rot) {
+  // cross
+  // レール　十字　10x10x10
+  //  [top]
+  //  +-----+
+  //  | | | |
+  //  |-+ +-|
+  //  |~| |~|
+  //  +-----+
+  // ・なぜか、十字の上から侵入するときに、床にぶつかる感じ
+  //               左から侵入時にはそんな感じはしない
+  // ・交差箇所は床に板ではなく、レールの内部に誘導路を置くのがよいかも
+  var xxxlist = [[[ blockSize_, 0, railIntr_],  // 右下
+                  [ railIntr_ , 0, railIntr_],
+                  [ railIntr_ , 0, blockSize_]],
+                 [[ blockSize_, 0, -railIntr_],  // 右上
+                  [ railIntr_ , 0, -railIntr_],
+                  [ railIntr_ , 0, -blockSize_]],
+                 [[-blockSize_, 0, -railIntr_],  // 左上
+                  [-railIntr_ , 0, -railIntr_],
+                  [-railIntr_ , 0, -blockSize_]],
+                 [[-blockSize_, 0, railIntr_],  // 左下
+                  [-railIntr_ , 0, railIntr_],
+                  [-railIntr_ , 0, blockSize_]],
+                ];
+  var opalist = [0.4, 0.4, 0.4, 0.4];
+  // 交差下に平面
+//  var pltposilist = [[0,-1.22,0]];
+  var pltposilist = [[0,-1,0]];
+  var pltsizelist = [[blockSize, 0.1, blockSize]];
+  var pltopalist = [0.1];
+  var sy = 1; var sz = 1;
+//  var sy = 0.1; var sz = 0.1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var n_ = xyzlist.length-1;
+    for (var i = 0; i < n_; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=(xx1-xx2)==0 ? PI_ : Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz))
+                             // railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  for (var ii = 0; ii < pltposilist.length; ++ii) {
+    var pltposi = pltposilist[ii];
+    var pltsize = pltsizelist[ii];
+    var pltopa = pltopalist[ii];
+    var pxx = pltposi[0]; var pyy = pltposi[1]; var pzz = pltposi[2];
+    var sxx = pltsize[0]; var syy = pltsize[1]; var szz = pltsize[2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: pltopa});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Cross_01(x,y,z, rot) {
+  // cross_R45
+  // レール　クロス／十字（ななめR45)　20x10x10
+  //  [top]
+  //  +-----+-----+
+  //  |   ＼:／   |
+  //  |   ／:＼   |
+  //  +-----+-----+
+  var v = blockSize_-railIntrR45_;
+  var xxxlist = [[[        -v, 0, -blockSize_],  // 上
+                  [         0, 0, -blockSize_+v],
+                  [         v, 0, -blockSize_]],
+                 [[ -blockSize+v , 0, -blockSize_],  // 左
+                  [ -railIntrR45_, 0, 0],
+                  [ -blockSize+v , 0,  blockSize_]],
+                 [[        -v, 0,  blockSize_],  // 下
+                  [         0, 0,  blockSize_-v],
+                  [         v, 0,  blockSize_]],
+                 [[  blockSize-v , 0, -blockSize_],  // 右
+                  [  railIntrR45_, 0, 0],
+                  [  blockSize-v , 0,  blockSize_]],
+                ];
+  var opalist = [0.4, 0.4, 0.4, 0.4, // 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+                ];
+  var pltposilist = [[0,-1.22,0], // [0,-2.22,0],
+                    ];
+  var pltsizelist = [[blockSize, 0.1, blockSize],
+                     // [blockSize*2, 0.1, blockSize]
+                    ];
+  var pltopalist = [0.1, // 0.1
+                    ];
+  var sy = 1; var sz = 1;
+//  var sy = 0.1; var sz = 0.1;
+  var sy_ = sy/2; var sz_ = sz/2;
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjxlist = [blockSize_*2, blockSize_*1, blockSize_*2, blockSize_*1];
+  var adjzlist = [blockSize_*1, blockSize_*2, blockSize_*1, blockSize_*2];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var n_ = xyzlist.length-1;
+    for (var i = 0; i < n_; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=(xx1-xx2)==0 ? PI_ : Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz))
+                             // railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  for (var ii = 0; ii < pltposilist.length; ++ii) {
+    var pltposi = pltposilist[ii];
+    var pltsize = pltsizelist[ii];
+    var pltopa = pltopalist[ii];
+    var pxx = pltposi[0]; var pyy = pltposi[1]; var pzz = pltposi[2];
+    var sxx = pltsize[0]; var syy = pltsize[1]; var szz = pltsize[2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: pltopa});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Cross_02(x,y,z, rot) {
+  // cross2
+  // レール　十字　10x10x10
+  //  [top]
+  //  +-----+
+  //  | | | |
+  //  |-+ +-|
+  //  |~| |~|
+  //  +-----+
+  var xxxlist = [[[ blockSize_, 0, railIntr_],  // 右下
+                  [ railIntr_ , 0, railIntr_],
+                  [ railIntr_ , 0, blockSize_]],
+                 [[ blockSize_, 0, -railIntr_],  // 右上
+                  [ railIntr_ , 0, -railIntr_],
+                  [ railIntr_ , 0, -blockSize_]],
+                 [[-blockSize_, 0, -railIntr_],  // 左上
+                  [-railIntr_ , 0, -railIntr_],
+                  [-railIntr_ , 0, -blockSize_]],
+                 [[-blockSize_, 0, railIntr_],  // 左下
+                  [-railIntr_ , 0, railIntr_],
+                  [-railIntr_ , 0, blockSize_]],
+                 ];
+  var opalist = [0.4, 0.4, 0.4, 0.4];
+  // 交差下に平面
+//  var pltposilist = [[0,-1.22,0]];
+  var v = 5;
+  var pltposilist = [[0, 0.5, 0, new CANNON.Quaternion()],
+                     [v, 0, 0, new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, -1), 0.3)],
+                     [-v, 0, 0, new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), 0.3)],
+                     [0, 0, v, new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), 0.3)],
+                     [0, 0, -v, new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(-1, 0, 0), 0.3)],
+                     ];
+  var pltsizelist = [[railIntr, 0.1, railIntr],
+                     [railPad*2, 0.1, railIntr],
+                     [railPad*2, 0.1, railIntr],
+                     [railIntr, 0.1, railPad*2],
+                     [railIntr, 0.1, railPad*2],
+                     ];
+  var pltopalist = [0.1, 0.1, 0.1, 0.1, 0.1, ];
+  var sy = 1; var sz = 1;
+//  var sy = 0.1; var sz = 0.1;
+  var sy_ = sy/2; var sz_ = sz/2;
+//  var adjx = 5; var adjy = 0; var adjz = 5;
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var n_ = xyzlist.length-1;
+    for (var i = 0; i < n_; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=(xx1-xx2)==0 ? PI_ : Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz))
+                             // railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  for (var ii = 0; ii < pltposilist.length; ++ii) {
+    var pltposi = pltposilist[ii];
+    var pltsize = pltsizelist[ii];
+    var pltopa = pltopalist[ii];
+    var pxx = pltposi[0]; var pyy = pltposi[1]; var pzz = pltposi[2]; var quat = pltposi[3];
+    var sxx = pltsize[0]; var syy = pltsize[1]; var szz = pltsize[2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         quat);
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: pltopa});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viObj2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Cross_03(x,y,z, rot) {
+  // cross2_R45
+  // レール　クロス／十字（ななめR45)　20x10x10
+  //  [top]
+  //  +-----+-----+
+  //  |   ＼:／   |
+  //  |   ／:＼   |
+  //  +-----+-----+
+  var v = blockSize_-railIntrR45_;
+  var xxxlist = [[[        -v, 0, -blockSize_],  // 上
+                  [         0, 0, -blockSize_+v],
+                  [         v, 0, -blockSize_]],
+                 [[ -blockSize+v , 0, -blockSize_],  // 左
+                  [ -railIntrR45_, 0, 0],
+                  [ -blockSize+v , 0,  blockSize_]],
+                 [[        -v, 0,  blockSize_],  // 下
+                  [         0, 0,  blockSize_-v],
+                  [         v, 0,  blockSize_]],
+                 [[  blockSize-v , 0, -blockSize_],  // 右
+                  [  railIntrR45_, 0, 0],
+                  [  blockSize-v , 0,  blockSize_]],
+                 // [[-blockSize_, 0, -blockSize_],  // デバッグ用：中心：＼
+                 //  [ blockSize_, 0,  blockSize_]],
+                 // [[-blockSize_-railIntrR45_, 0, -blockSize_],
+                 //  [ blockSize_-railIntrR45_, 0,  blockSize_]],
+                 // [[-blockSize_+railIntrR45_, 0, -blockSize_],
+                 //  [ blockSize_+railIntrR45_, 0,  blockSize_]],
+                 // [[-blockSize_, 0,  blockSize_],  // デバッグ用：中心：／
+                 //  [ blockSize_, 0, -blockSize_]],
+                 // [[-blockSize_-railIntrR45_, 0,  blockSize_],
+                 //  [ blockSize_-railIntrR45_, 0, -blockSize_]],
+                 // [[-blockSize_+railIntrR45_, 0,  blockSize_],
+                 //  [ blockSize_+railIntrR45_, 0, -blockSize_]],
+                 ];
+  var opalist = [0.4, 0.4, 0.4, 0.4, // 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+                ];
+  var qr45 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), PI_/2);
+  var v = 3.6;
+  var pltposilist = [[0, 0.5, 0, qr45],
+                     [v, 0, v, new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(-0.5, 0, 0.5), -0.3).mult(qr45)],
+                     [-v, 0, -v, new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(-0.5, 0, 0.5),  0.3).mult(qr45)],
+                     [v, 0, -v, new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0.5, 0, 0.5), -0.3).mult(qr45)],
+                     [-v, 0, v, new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0.5, 0, 0.5),  0.3).mult(qr45)],
+                     ];
+  var pltsizelist = [[railIntr, 0.1, railIntr],
+                     [railIntr, 0.1, railPad*2],
+                     [railIntr, 0.1, railPad*2],
+                     [railPad*2, 0.1, railIntr],
+                     [railPad*2, 0.1, railIntr],
+                    ];
+  var pltopalist = [0.1, 0.1, 0.1, 0.1, 0.1, ];
+  var sy = 1; var sz = 1;
+//  var sy = 0.1; var sz = 0.1;
+  var sy_ = sy/2; var sz_ = sz/2;
+//  var adjx = 5; var adjy = 0; var adjz = 5;
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjxlist = [blockSize_*2, blockSize_*1, blockSize_*2, blockSize_*1];
+  var adjzlist = [blockSize_*1, blockSize_*2, blockSize_*1, blockSize_*2];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xyzlist = xxxlist[ii];
+    var opacity = opalist[ii];
+    var n_ = xyzlist.length-1;
+    for (var i = 0; i < n_; ++i) {
+      var xx1 = xyzlist[i][0]; var yy1 = xyzlist[i][1]; var zz1 = xyzlist[i][2];
+      var xx2 = xyzlist[i+1][0]; var yy2 = xyzlist[i+1][1]; var zz2 = xyzlist[i+1][2];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2);
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=(xx1-xx2)==0 ? PI_ : Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz))
+                             // railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  for (var ii = 0; ii < pltposilist.length; ++ii) {
+    var pltposi = pltposilist[ii];
+    var pltsize = pltsizelist[ii];
+    var pltopa = pltopalist[ii];
+    var pxx = pltposi[0]; var pyy = pltposi[1]; var pzz = pltposi[2]; var quat = pltposi[3];
+    var sxx = pltsize[0]; var syy = pltsize[1]; var szz = pltsize[2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         quat);
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: pltopa});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viObj2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Funnel_00(x,y,z, rot) {
+  // funnel_sq
+  // 漏斗（渦巻型）　（大径）　30x30x30
+  //   細い直方体２本で表現
+  //  [top]
+  //  +-----+-----+-----+
+  //  |     |＿＿ |＿＿ |
+  //  |   ／| ─  |── |
+  //  +-----+-----+-----+
+  //  |  ｜ :／ ＼＼    |
+  //  |  ｜ ｜   ｜｜   |
+  //  +-----+-----+-----+
+  //  |   ＼|＿＿／     |
+  //  |     |     |     |
+  //  +-----+-----+-----+
+  //  [side]
+  //  +-----+-----+-----+
+  //  |  ＿＿＿＿＿＿＿ |
+  //  |    ─＝＝─     |
+  //  +-----+-----+-----+
+  var rinn = (10 - railIntr)/2 + 20; // 内側の半径
+  var rout = (10 + railIntr)/2 + 20; // 外側の半径
+  var rout2 = 30; // ガイドレール（大外枠）の半径
+  var ndivR = 10;  // 円弧（９０度）の分割数
+  var drad = PI_/ndivR;  // 分割１つぶんのradian
+  var n = 80;  // 要素片の数（ndivR*4=40で一回転分）
+  var n2max = 41;  // 要素片の数（ndivR*4=40で一回転分）
+  var xxadj = 0;
+  var zzadj = 0;
+  var xxinnlist = [];
+  var yyinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var yyoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var yyout2list = [];
+  var zzout2list = [];
+  var yy = 0;
+  var yy2 = 5;
+  for (var i = 0; i < n+1; ++i) {
+      var vrad = i*drad;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      yyinnlist.push(yy);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      yyoutlist.push(yy);
+      zzoutlist.push(zz*rout+zzadj);
+      yy += -0.125;
+      rinn += -0.255;
+      rout += -0.251;
+      if (i < n2max) {
+          xxout2list.push(xx*rout2+xxadj);
+          yyout2list.push(yy2);
+          zzout2list.push(zz*rout2+zzadj);
+          yy2 += -0.13;
+          rout2 += -0.2;
+      }
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list];
+  var yylist2 = [yyinnlist, yyoutlist, yyout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list];
+  var opalist = [0.4, 0.4, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var adjx = blockSize*3; var adjy = blockSize_*3; var adjz = blockSize*3;
+  // var adjxlist = [blockSize_*6, blockSize_*6, blockSize_*6, blockSize_*6];
+  // var adjzlist = [blockSize_*6, blockSize_*6, blockSize_*6, blockSize_*6];
+  // var adjx = adjxlist[rot%4];
+  // var adjy = blockSize_*3;
+  // var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var yylist = yylist2[ii];
+    var zzlist = zzlist2[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < n; ++i) {
+      var xx1 = xxlist[i];   var yy1 = yylist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var yy2 = yylist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Funnel_01(x,y,z, rot) {
+  // funnel_sq_r
+  // 漏斗（渦巻型：逆巻き）　（大径）　30x30x30
+  //   細い直方体２本で表現  逆巻き
+  //  [top]
+   //  [top]
+  //  +-----+-----+-----+
+  //  |＿＿ |＿＿ |     |
+  //  |── | ─  |＼   |
+  //  +-----+-----+-----+
+  //  |    ／／ ＼: ｜  |
+  //  |   ｜｜   ｜ ｜  |
+  //  +-----+-----+-----+
+  //  |     ＼＿＿|／   |
+  //  |     |     |     |
+  //  +-----+-----+-----+
+  //  [side]
+  //  +-----+-----+-----+
+  //  |  ＿＿＿＿＿＿＿ |
+  //  |    ─＝＝─     |
+  //  +-----+-----+-----+
+  var rinn = (10 - railIntr)/2 + 20; // 内側の半径
+  var rout = (10 + railIntr)/2 + 20; // 外側の半径
+  var rout2 = 30; // ガイドレール（大外枠）の半径
+  var ndivR = 10;  // 円弧（９０度）の分割数
+  var drad = PI_/ndivR;  // 分割１つぶんのradian
+  var n = 80;  // 要素片の数（ndivR*4=40で一回転分）
+  var n2max = 41;  // 要素片の数（ndivR*4=40で一回転分）
+  var xxadj = 0;
+  var zzadj = 0;
+  var xxinnlist = [];
+  var yyinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var yyoutlist = [];
+  var zzoutlist = [];
+  var xxout2list = [];
+  var yyout2list = [];
+  var zzout2list = [];
+  var yy = 0;
+  var yy2 = 5;
+  for (var i = 0; i < n+1; ++i) {
+      var vrad = -i*drad;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      yyinnlist.push(yy);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      yyoutlist.push(yy);
+      zzoutlist.push(zz*rout+zzadj);
+      yy += -0.125;
+      rinn += -0.255;
+      rout += -0.251;
+      if (i < n2max) {
+          xxout2list.push(xx*rout2+xxadj);
+          yyout2list.push(yy2);
+          zzout2list.push(zz*rout2+zzadj);
+          yy2 += -0.13;
+          rout2 += -0.2;
+      }
+  }
+  var xxlist2 = [xxinnlist, xxoutlist, xxout2list];
+  var yylist2 = [yyinnlist, yyoutlist, yyout2list];
+  var zzlist2 = [zzinnlist, zzoutlist, zzout2list];
+  var opalist = [0.4, 0.4, 0.1];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  // var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjx = blockSize*3; var adjy = blockSize_*3; var adjz = blockSize*3;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxlist2.length; ++ii) {
+    var xxlist = xxlist2[ii];
+    var yylist = yylist2[ii];
+    var zzlist = zzlist2[ii];
+    var opacity = opalist[ii];
+    for (var i = 0; i < n; ++i) {
+      var xx1 = xxlist[i];   var yy1 = yylist[i];   var zz1 = zzlist[i];
+      var xx2 = xxlist[i+1]; var yy2 = yylist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = (zz1+zz2)/2;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, -1, 0), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: opacity});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Funnel_02(x,y,z, rot) {
+  // funnel_plt_s
+  // 漏斗（平板型）　（小）　30x20x30
+  //   ４まいの板を重ねて
+  //  [top]
+  //  +-----+-----+-----+
+  //  |    ＿＿＿＿     |
+  //  |   |＼    ／|    |
+  //  |   | ｜￣｜ |    |
+  //  |   | ｜＿｜ |    |
+  //  |   |／    ＼|    |
+  //  |    ￣￣￣￣     |
+  //  +-----+-----+-----+
+  //  [side]
+  //  +-----+-----+-----+
+  //  |   ＿＿＿＿＿    |
+  //  |     ───      |
+  //  +-----+-----+-----+
+  var sx = 10; var sy = 1; var sz = 30; var ang=Math.atan(1/5);
+  var px = 10; var py = 5; var pz = 0;
+  var sxyzlist = [[sx, sy, sz],
+                  [sz, sy, sx],
+                  [sx, sy, sz],
+                  [sz, sy, sx],
+                 ];
+  var pxyzlist = [[px, py, pz],
+                  [pz, py, px],
+                  [-px, py, pz],
+                  [pz, py, -px],
+                 ];
+  var quatlist = [new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang),
+                  new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -ang),
+                  new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), -ang),
+                  new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), ang),
+                 ];
+  // 降下用のガイド板
+  var sx2 = 1; var sy2 = 4; var sz2 = 10;
+  var px2 = 5; var py2 = 2; var pz2 = 0;
+  var sxyz2list = [[sx2, sy2, sz2],
+                   [sz2, sy2, sx2],
+                   [sx2, sy2, sz2],
+                   [sz2, sy2, sx2],
+                  ];
+  var pxyz2list = [[px2, py2, pz2],
+                   [pz2, py2, px2],
+                   [-px2, py2, pz2],
+                   [pz2, py2, -px2],
+                  ];
+  var adjx = blockSize_*3; var adjy = 0; var adjz = blockSize_*3;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < sxyzlist.length; ++ii) {
+    var sxx = sxyzlist[ii][0];
+    var syy = sxyzlist[ii][1];
+    var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var pxx = pxyzlist[ii][0];
+    var pyy = pxyzlist[ii][1];
+    var pzz = pxyzlist[ii][2];
+    var quat = quatlist[ii];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         quat);
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viObj2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  for (var ii = 0; ii < sxyz2list.length; ++ii) {
+    var sxx = sxyz2list[ii][0];
+    var syy = sxyz2list[ii][1];
+    var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var pxx = pxyz2list[ii][0];
+    var pyy = pxyz2list[ii][1];
+    var pzz = pxyz2list[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Funnel_03(x,y,z, rot) {
+  // funnel_plt_m
+  // 漏斗（平板型）　（中）　50x20x50
+  //   ４まいの板を重ねて
+  //  [top]
+  //  +-----+-----+-----+
+  //  |    ＿＿＿＿     |
+  //  |   |＼    ／|    |
+  //  |   | ｜￣｜ |    |
+  //  |   | ｜＿｜ |    |
+  //  |   |／    ＼|    |
+  //  |    ￣￣￣￣     |
+  //  +-----+-----+-----+
+  //  [side]
+  //  +-----+-----+-----+
+  //  |   ＿＿＿＿＿    |
+  //  |     ───      |
+  //  +-----+-----+-----+
+  var sx = 20; var sy = 1; var sz = 50; var ang=Math.atan(1/8);
+  var px = 15; var py = 5; var pz = 0;
+  var sxyzlist = [[sx, sy, sz],
+                  [sz, sy, sx],
+                  [sx, sy, sz],
+                  [sz, sy, sx],
+                 ];
+  var pxyzlist = [[px, py, pz],
+                  [pz, py, px],
+                  [-px, py, pz],
+                  [pz, py, -px],
+                 ];
+  var quatlist = [new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang),
+                  new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -ang),
+                  new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), -ang),
+                  new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), ang),
+                 ];
+  // 降下用のガイド板
+  var sx2 = 1; var sy2 = 4; var sz2 = 10;
+  var px2 = 5; var py2 = 2; var pz2 = 0;
+  var sxyz2list = [[sx2, sy2, sz2],
+                   [sz2, sy2, sx2],
+                   [sx2, sy2, sz2],
+                   [sz2, sy2, sx2],
+                  ];
+  var pxyz2list = [[px2, py2, pz2],
+                   [pz2, py2, px2],
+                   [-px2, py2, pz2],
+                   [pz2, py2, -px2],
+                  ];
+  var adjx = blockSize_*5; var adjy = 0; var adjz = blockSize_*5;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < sxyzlist.length; ++ii) {
+    var sxx = sxyzlist[ii][0];
+    var syy = sxyzlist[ii][1];
+    var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var pxx = pxyzlist[ii][0];
+    var pyy = pxyzlist[ii][1];
+    var pzz = pxyzlist[ii][2];
+    var quat = quatlist[ii];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         quat);
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viObj2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  for (var ii = 0; ii < sxyz2list.length; ++ii) {
+    var sxx = sxyz2list[ii][0];
+    var syy = sxyz2list[ii][1];
+    var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var pxx = pxyz2list[ii][0];
+    var pyy = pxyz2list[ii][1];
+    var pzz = pxyz2list[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Funnel_04(x,y,z, rot) {
+  // funnel_plt_m_c
+  // 漏斗（平板型）　（中）　50x20x50
+  //   ２まいの板を重ねて。隅に排出穴
+  //  [top]
+  //  +-----+-----+-----+
+  //  |    ＿＿＿＿     |
+  //  |   |  |     |    |
+  //  |   |￣＼    |    |
+  //  |   |    ＼  |    |
+  //  |   |      ＼|    |
+  //  |    ￣￣￣￣     |
+  //  +-----+-----+-----+
+  //  [side]
+  //  +-----+-----+-----+
+  //  |   ＿＿＿＿＿    |
+  //  |   ──          |
+  //  +-----+-----+-----+
+  var sx = 40; var sy = 1; var sz = 50; var ang=Math.atan(1/20);
+  var px =  5; var py = 5; var pz = 0;
+  var sxyzlist = [[sx, sy, sz],
+                  [sz, sy, sx],
+                 ];
+  var pxyzlist = [[px, py, pz],
+                  [pz, py, px],
+                 ];
+  var quatlist = [new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang),
+                  new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -ang),
+                 ];
+  // ガイド板
+  var sx2 = 1; var sy2 = 4; var sz2 = 10;
+  var px2 = 5; var py2 = 2; var pz2 = 0;
+  var sx3 = 1; var sy3 = 10; var sz3 = 50;
+  var px3 = 25; var py3 = 5; var pz3 = 0;
+  var sxyz2list = [[sx2, sy2, sz2],
+                   [sz2, sy2, sx2],
+                   [sx3, sy3, sz3],
+                   [sz3, sy3, sx3],
+                  ];
+  var pxyz2list = [[px2-20, py2, pz2-20],
+                   [pz2-20, py2, px2-20],
+                   [-px3, py3, pz3],
+                   [pz3, py3, -px3],
+                  ];
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjx = blockSize_*5; var adjy = 0; var adjz = blockSize_*5;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < sxyzlist.length; ++ii) {
+    var sxx = sxyzlist[ii][0];
+    var syy = sxyzlist[ii][1];
+    var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var pxx = pxyzlist[ii][0];
+    var pyy = pxyzlist[ii][1];
+    var pzz = pxyzlist[ii][2];
+    var quat = quatlist[ii];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         quat);
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viObj2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  for (var ii = 0; ii < sxyz2list.length; ++ii) {
+    var sxx = sxyz2list[ii][0];
+    var syy = sxyz2list[ii][1];
+    var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var pxx = pxyz2list[ii][0];
+    var pyy = pxyz2list[ii][1];
+    var pzz = pxyz2list[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Up_00(x,y,z, rot) {
+  // up_s
+  // レール上下（小径）　10x10x10
+  //   細い直方体２本で表現
+  //  [top]
+  //  +-----+
+  //  |＿＿ |
+  //  |── |
+  //  +-----+
+  //  [side]
+  //  +---*-+
+  //  |   * |
+  //  |***  |
+  //  +-----+
+  var r = blockSize - railPad; // 半径
+  var ndivR = 10;  // 円弧（９０度）の分割数
+  var drad = PI_/ndivR;  // 分割１つぶんのradian
+  var n = 9;  // 要素の個数  円弧（81度）分
+  var xxadj = -blockSize/2+railPad;
+  var yyadj = 0;
+  var xxlist = [];
+  var yylist = [];
+  for (var i = 0; i < n+1; ++i) {
+      var vrad = i*drad;
+      var xx = 1 - Math.sin(vrad);
+      var yy = 1 - Math.cos(vrad);
+      xxlist.push(xx*r+xxadj);
+      yylist.push(yy*r+yyadj);
+  }
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pzlist = [railIntr_, -railIntr_];
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pzlist.length; ++ii) {
+    var pz = pzlist[ii];
+    for (var i = 0; i < n; ++i) {
+      var xx1 = xxlist[i];   var yy1 = yylist[i];
+      var xx2 = xxlist[i+1]; var yy2 = yylist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var ang=Math.atan((yy1-yy2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function UpDown_00(x,y,z, rot) {
+  // updown_s
+  // レール上下（小径）　10x10x10
+  //   細い直方体２本で表現
+  //  [top]
+  //  +-----+
+  //  |＿＿ |
+  //  |── |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |***  |
+  //  |   * |
+  //  +---*-+
+  //  |   * |
+  //  |***  |
+  //  +-----+
+  let r = blockSize - railPad; // 半径
+  let ndivR = 10;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let n = 20;  // 要素の個数  円弧（180度）分
+  let xxadj = -blockSize_+railPad;
+  let yyadj = 0;
+  let xxlist = [];
+  let yylist = [];
+  for (let i = 0; i < n+1; ++i) {
+      let vrad = i*drad;
+      let xx = 1 - Math.sin(vrad);
+      let yy = 1 - Math.cos(vrad);
+      xxlist.push(xx*r+xxadj);
+      yylist.push(yy*r+yyadj);
+  }
+  let sy = railw; let sz = railw;
+  let sy_ = sy/2; let sz_ = sz/2;
+  let pzlist = [railIntr_, -railIntr_];
+  let adjx = blockSize_; let adjy = blockSize_; let adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pzlist.length; ++ii) {
+    let pz = pzlist[ii];
+    for (let i = 0; i < n; ++i) {
+      let xx1 = xxlist[i];   let yy1 = yylist[i];
+      let xx2 = xxlist[i+1]; let yy2 = yylist[i+1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let ang=Math.atan((yy1-yy2)/(xx1-xx2));
+      let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function UpDown_01(x,y,z, rot) {
+  // updown_s2
+  // レール上下（小径）　10x10x10
+  //   細い直方体２本で表現
+  //  [top]
+  //  +-----+
+  //  |＿＿ |
+  //  |── |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |***  |
+  //  |   * |
+  //  +---*-+
+  //  |   * |
+  //  |***  |
+  //  +-----+
+  // let r = blockSize - railPad; // 半径
+  let r = blockSize; // 半径
+  let ndivR = 10;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let n = 20;  // 要素の個数  円弧（180度）分
+  let xxadj = -blockSize_; // -blockSize_+railPad;
+  let yyadj = 0;
+  let xxlist = [];
+  let yylist = [];
+  for (let i = 0; i < n+1; ++i) {
+      let vrad = i*drad;
+      let xx = 1 - Math.sin(vrad);
+      let yy = 1 - Math.cos(vrad);
+      xxlist.push(xx*r+xxadj);
+      yylist.push(yy*r+yyadj);
+  }
+  let sy = railw; let sz = railw;
+  let sy_ = sy/2; let sz_ = sz/2;
+  let pzlist = [railIntr_, -railIntr_];
+  let adjx = blockSize_, adjy = blockSize_, adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pzlist.length; ++ii) {
+    let pz = pzlist[ii];
+    for (let i = 0; i < n; ++i) {
+      let xx1 = xxlist[i];   let yy1 = yylist[i];
+      let xx2 = xxlist[i+1]; let yy2 = yylist[i+1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let ang=Math.atan((yy1-yy2)/(xx1-xx2));
+      let railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Down_00(x,y,z, rot) {
+  // down_s
+  // レール下（小径）　10x10x10
+  //   細い直方体２本で表現
+  //  [top]
+  //  +-----+
+  //  |＿＿ |
+  //  |── |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |***  |
+  //  |   * |
+  //  +---*-+
+  var r = blockSize - railPad; // 半径
+  var ndivR = 10;  // 円弧（９０度）の分割数
+  var drad = PI_/ndivR;  // 分割１つぶんのradian
+  var n = 10;  // 要素の個数  円弧（90度）分
+  var xxadj = -blockSize/2+railPad;
+  var yyadj = 0;
+  var xxlist = [];
+  var yylist = [];
+  for (var i = 0; i < n+1; ++i) {
+      var vrad = i*drad;
+      var xx = 1 - Math.sin(vrad);
+      var yy = Math.cos(vrad);
+      xxlist.push(xx*r+xxadj);
+      yylist.push(yy*r+yyadj);
+  }
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pzlist = [railIntr_, -railIntr_];
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pzlist.length; ++ii) {
+    var pz = pzlist[ii];
+    for (var i = 0; i < n; ++i) {
+      var xx1 = xxlist[i];   var yy1 = yylist[i];
+      var xx2 = xxlist[i+1]; var yy2 = yylist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var ang=Math.atan((yy1-yy2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function VLoop_00(x,y,z, rot) {
+  // vloop_s
+  // 縦ループ・ピッチ方向（小径）　20x20x10
+  //   細い直方体２本で表現
+  //  [top]
+  //  +-----+-----+
+  //  |      __   |
+  //  |    ／ ／  |
+  //  +  ／ ／ ／ |
+  //  |   ／ ／   |
+  //  |    ~~     |
+  //  +-----+-----+
+  //  [side]
+  //  +-----+-----+
+  //  |    ＿＿   |
+  //  |  ／ ＿ ＼ |
+  //  + ｜ |＿| ｜|
+  //  |  ＼    ／ |
+  //  |     ─    |
+  //  +-----+-----+
+  var r = blockSize - railPad; // 半径
+  var ndivR = 10;  // 円弧（９０度）の分割数
+  var drad = PI_/ndivR;  // 分割１つぶんのradian
+  var n = 40;  // 要素の個数  円弧（180度）分
+  // var xxadj = -blockSize/2;
+  // var yyadj = -blockSize/2;
+  var xxadj = -blockSize/2+railPad;
+  var yyadj = 0;
+  var xxlist = [];
+  var yylist = [];
+  var zzlist = []; // 中心
+  var zstep = blockSize/40;
+  for (var i = 0; i < n+1; ++i) {
+      var vrad = i*drad;
+      var xx = 1 - Math.sin(vrad);
+      var yy = 1 - Math.cos(vrad);
+      var zz = i*zstep;
+      xxlist.push(xx*r+xxadj);
+      yylist.push(yy*r+yyadj);
+      zzlist.push(zz);
+  }
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pzaddlist = [railIntr_, -railIntr_];
+  var adjxlist = [blockSize_*1, blockSize_*1, blockSize_*3, blockSize_*3];
+  var adjzlist = [blockSize_*1, blockSize_*3, blockSize_*3, blockSize_*1];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pzaddlist.length; ++ii) {
+    var pzadd = pzaddlist[ii];
+    for (var i = 0; i < n; ++i) {
+      var xx1 = xxlist[i];   var yy1 = yylist[i];
+      var xx2 = xxlist[i+1]; var yy2 = yylist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = zzlist[i] + pzadd;
+      var ang=Math.atan((yy1-yy2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function VLoop_01(x,y,z, rot) {
+  // vloop_m
+  // 縦ループ・ピッチ方向（中径）　40x40x10
+  //   細い直方体２本で表現
+  //  [top]
+  //  +-----+-----+
+  //  |       ──|
+  //  |    ／  ─-|
+  //  +  ／ ／ ／ +
+  //  |   ／ ／   |
+  //  |    ／ ／  |
+  //  +  ／ ／ ／ +
+  //  |   ／ ／   |
+  //  |───     |
+  //  +-----+-----+
+  //  [side]
+  //  +-----+-----+
+  //  |           |
+  //  |   *****   |
+  //  +  **   **  +
+  //  |   ** **   |
+  //  |***********|
+  //  +-----+-----+
+  var r = blockSize*2 - railPad; // 半径
+  var ndivR = 10;  // 円弧（９０度）の分割数
+  var drad = PI_/ndivR;  // 分割１つぶんのradian
+  var n = 40;  // 要素の個数  円弧（180度）分
+  var xxadj = -blockSize/2+railPad;
+  var yyadj = 0;
+  var xxlist = [];
+  var yylist = [];
+  var zzlist = []; // 中心
+  var zstep = blockSize/40;
+  for (var i = 0; i < n+1; ++i) {
+      var vrad = i*drad;
+      var xx = 1 - Math.sin(vrad);
+      var yy = 1 - Math.cos(vrad);
+      var zz = i*zstep;
+      xxlist.push(xx*r+xxadj);
+      yylist.push(yy*r+yyadj);
+      zzlist.push(zz);
+  }
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var pzaddlist = [railIntr_, -railIntr_];
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjxlist = [blockSize_*1, blockSize_*1, blockSize_*7, blockSize_*3];
+  var adjzlist = [blockSize_*1, blockSize_*7, blockSize_*3, blockSize_*1];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_;
+  var adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pzaddlist.length; ++ii) {
+    var pzadd = pzaddlist[ii];
+    for (var i = 0; i < n; ++i) {
+      var xx1 = xxlist[i];   var yy1 = yylist[i];
+      var xx2 = xxlist[i+1]; var yy2 = yylist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var py = (yy1+yy2)/2;
+      var pz = zzlist[i] + pzadd;
+      var ang=Math.atan((yy1-yy2)/(xx1-xx2));
+      var railQuat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function HLoop_00(x,y,z, rot) {
+  // hloop_s
+  // 横ループ／ループ橋・ピッチ方向（小径）　20x20x20
+  //  [top]
+  //  +-----+-----+
+  //  |    ＿＿   |
+  //  |  ／ ＿ ＼ |
+  //  + ｜ |＿| ｜|
+  //  |  ＼  | ／ |
+  //  |     ─    |
+  //  +-----+-----+
+  //  [side]
+  //  +-----+-----+
+  //  |      __   |
+  //  |    ／ ／  |
+  //  +  ／ ／ ／ |
+  //  |   ／ ／   |
+  //  |    ~~     |
+  //  +-----+-----+
+  var rinn = (blockSize - railIntr)/2; // 内側の半径
+  var rout = (blockSize + railIntr)/2; // 外側の半径
+  var rout2 = blockSize; // ガイドレール（大外枠）の半径
+  var ndivR = 10;  // 円弧（９０度）の分割数
+  var drad = PI_/ndivR;  // 分割１つぶんのradian
+  var n = 40;  // 要素の個数  円弧（180度）分
+  var xxadj = 0;
+  var zzadj = 0;
+  let radlist = [];
+  var xxinnlist = [];
+  var zzinnlist = [];
+  var xxoutlist = [];
+  var zzoutlist = [];
+  var yylist = [];
+  var xxguidelist = [];
+  var zzguidelist = [];
+  var yyguidelist = [];
+  var ystep = blockSize/n;
+  for (var i = 0; i < n+1; ++i) {
+      var vrad = i*drad;
+      var xx = Math.cos(vrad);
+      var zz = Math.sin(vrad);
+      var yy = i*ystep;
+      radlist.push(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      yylist.push(yy);
+      xxguidelist.push(xx*rout2+xxadj);
+      zzguidelist.push(zz*rout2+xxadj);
+      yyguidelist.push(yy + gardH);
+  }
+  var xxxlist = [xxinnlist, xxoutlist, xxguidelist];
+  var yyylist = [yylist, yylist, yyguidelist];
+  var zzzlist = [zzinnlist, zzoutlist, zzguidelist];
+  var sy = 1; var sz = 1;
+  var sy_ = sy/2; var sz_ = sz/2;
+  var adjx = blockSize; var adjy = blockSize_; var adjz = blockSize;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < xxxlist.length; ++ii) {
+    var xxlist = xxxlist[ii];
+    var yylist = yyylist[ii];
+    var zzlist = zzzlist[ii];
+    for (var i = 0; i < n; ++i) {
+      let vrad = radlist[i];
+      var xx1 = xxlist[i];   var zz1 = zzlist[i];   var yy = yylist[i];
+      var xx2 = xxlist[i+1]; var zz2 = zzlist[i+1];
+      var sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      var sx_ = sx/2;
+      var px = (xx1+xx2)/2;
+      var pz = (zz1+zz2)/2;
+      var py = yy;
+      var ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.2);
+      var railQuat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      var railQuat = railQuat1.mult(railQuat2);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function HLoop_01(x,y,z, rot) {
+  // hloop_m
+  // 横ループ／ループ橋・ピッチ方向（中径）　40x20x40
+  //  [top]
+  //  +-----+-----+-----+-----+
+  //  |          ＿＿         |
+  //  |      ----    ----     |
+  //  +    ／            ＼   |
+  //  |  ／     ＿＿＿     ＼ |
+  //  | ｜    ／      ＼    ｜|
+  //  + ｜   ｜        ｜   ｜|
+  //  | ｜    ＼＿＿＿／    ｜|
+  //  |  ＼        |       ／ |
+  //  +    ＼      |     ／   |
+  //  |       ---  | ----     |
+  //  |          ──         |
+  //  +-----+-----+-----+-----+
+  //  [side]
+  //  +-----+-----+-----+-----+
+  //  |      __   |
+  //  |    ／ ／  |
+  //  +  ／ ／ ／ |
+  //  |   ／ ／   |
+  //  |    ~~     |
+  //  +-----+-----+-----+-----+
+  let rinn = (blockSize - railIntr)/2 + blockSize; // 内側の半径
+  let rout = (blockSize + railIntr)/2 + blockSize; // 外側の半径
+  let rout2 = blockSize*2; // ガイドレール（大外枠）の半径
+  let ndivR = 10;  // 円弧（９０度）の分割数
+  let drad = PI_/ndivR;  // 分割１つぶんのradian
+  let n = 40;  // 要素の個数  円弧（180度）分
+  let xxadj = 0;
+  let zzadj = 0;
+  let radlist = [];
+  let xxinnlist = [];
+  let zzinnlist = [];
+  let xxoutlist = [];
+  let zzoutlist = [];
+  let yylist = [];
+  let xxguidelist = [];
+  let zzguidelist = [];
+  let yyguidelist = [];
+  let ystep = blockSize/n;
+  for (let i = 0; i < n+1; ++i) {
+      let vrad = i*drad;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let yy = i*ystep;
+      radlist.push(vrad);
+      xxinnlist.push(xx*rinn+xxadj);
+      zzinnlist.push(zz*rinn+zzadj);
+      xxoutlist.push(xx*rout+xxadj);
+      zzoutlist.push(zz*rout+zzadj);
+      yylist.push(yy);
+      xxguidelist.push(xx*rout2+xxadj);
+      zzguidelist.push(zz*rout2+xxadj);
+      yyguidelist.push(yy + gardH);
+  }
+  let xxxlist = [xxinnlist, xxoutlist, xxguidelist];
+  let yyylist = [yylist, yylist, yyguidelist];
+  let zzzlist = [zzinnlist, zzoutlist, zzguidelist];
+  let sy = 1; let sz = 1;
+  let sy_ = sy/2; let sz_ = sz/2;
+  let adjx = blockSize_*4; let adjy = blockSize_; let adjz = blockSize_*4;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < xxxlist.length; ++ii) {
+    let xxlist = xxxlist[ii];
+    let yylist = yyylist[ii];
+    let zzlist = zzzlist[ii];
+    for (let i = 0; i < n; ++i) {
+      let vrad = radlist[i];
+      let xx1 = xxlist[i];   let zz1 = zzlist[i];   let yy = yylist[i];
+      let xx2 = xxlist[i+1]; let zz2 = zzlist[i+1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (zz1-zz2)**2)
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let pz = (zz1+zz2)/2;
+      let py = yy;
+      let ang=Math.atan((zz1-zz2)/(xx1-xx2));
+      let railQuat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+      let railQuat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      let railQuat = railQuat1.mult(railQuat2);
+      {
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             railQuat);
+        const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+        const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+        viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viRail2Mesh.quaternion.copy(railQuat);
+        viCntnrMesh.add(viRail2Mesh);
+      }
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function ForkV_00(x,y,z,rot) {
+  // fork_v
+  // 分岐　垂直　10x10x10
+  //   細い直方体２本＋板２枚で表現
+  // x,y,z : レールの部品のmin側：表示位置
+  // rot : 90度単位
+  //  [top]
+  //  +-----+
+  //  |＿＿ |
+  //  |── |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |     |
+  //  |**|**|
+  //  +-----+
+  var sx = blockSize; var sy = 1; var sz = 1;
+  var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  var px = 0; var py = 0; var pz = railIntr_;
+  var pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  // ガイド板
+  var sx2 = blockSize; var sy2 = blockSize_; var sz2 = 0.1; var ang=Math.atan(1/6);
+  var px2 = 0; var py2 = sy2; var pz2 = railIntr_ + railPad_;
+  var sxyz2list = [[sx2, sy2, sz2],
+                   [sx2, sy2, sz2],
+                   [0.1,   1, railIntr],];
+  var pxyz2list = [[px2, py2, pz2],
+                   [px2, py2, -pz2],
+                   [  0,   0,    0],];
+  var quat2list = [new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), ang),
+                   new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -ang),
+                   new CANNON.Quaternion(),];
+  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0];
+    var pyy = pxyzlist[ii][1];
+    var pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  for (var ii = 0; ii < pxyz2list.length; ++ii) {
+    var pxx = pxyz2list[ii][0];
+    var pyy = pxyz2list[ii][1];
+    var pzz = pxyz2list[ii][2];
+    var sxx = sxyz2list[ii][0];
+    var syy = sxyz2list[ii][1];
+    var szz = sxyz2list[ii][2];
+    var quat = quat2list[ii];
+    var sxx_ = sxx/2;
+    var syy_ = syy/2;
+    var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz),
+                         quat);
+    // ガイドの表示はwireframeで 
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({color: 0xa0a0a0, transparent: true, opacity: 0.2, wireframe:true});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viObj2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    const viObj2Geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(0, blockSize_, 0));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function ForkV_01(x,y,z,rot) {
+  // fork_v2
+  // 分岐　垂直（シーソー）　10x10x10
+  //   細い直方体２本＋シーソー板２枚で表現
+  //   グループ化したためか、ヒンジの位置でパランスがとれている（重心が上にあるはずなのに）
+  //   なので angularDamping を回転しにくく、高めにして動きにくくしておく
+  // x,y,z : レールの部品のmin側：表示位置
+  // rot : 90度単位
+  //  [top]
+  //  +-----+
+  //  |＿＿ |
+  //  |── |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |     |
+  //  | _|_ |
+  //  +-----+
+  var sx = blockSize; var sy = 1; var sz = 1;
+  var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  var px = 0; var py = 0; var pz = railIntr_;
+  var pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  // シーソー
+  var sxyz2list = [[blockSize, 0.01, blockSize],  // シーソー（水平の板）
+                   [0.01, blockSize*0.6, blockSize],];  // シーソー（垂直の板）
+  var pxyz2list = [[0, 0, 0],
+                   [0, blockSize*0.3, 0],];
+  // シーソー土台
+  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  const moCntnrBody2 = new CANNON.Body({
+    mass: 5,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+    angularDamping: 0.99, //def 0.01 回転しにくくしておく
+  });
+  const viCntnrMesh2 = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  for (var ii = 0; ii < pxyz2list.length; ++ii) {
+    var pxx = pxyz2list[ii][0]; var pyy = pxyz2list[ii][1]; var pzz = pxyz2list[ii][2];
+    var sxx = sxyz2list[ii][0]; var syy = sxyz2list[ii][1]; var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody2.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                          new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({color: 0xa0a0a0, transparent: true, opacity: 0.2});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh2.add(viObj2Mesh);
+  }
+  {
+    const viObj2Geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4, wireframe:true});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(0, blockSize_, 0));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  moCntnrBody2.position = new CANNON.Vec3(x+adjx, y+adjy+blockSize*0.2, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+  viCntnrMesh2.position.copy(moCntnrBody2.position);
+  viCntnrMesh2.quaternion.copy(moCntnrBody2.quaternion);
+  world.addBody(moCntnrBody2);
+  scene.add(viCntnrMesh2);
+  // シーソーの動きの制約（ヒンジで繋ぐ
+  const hingeConst = new CANNON.HingeConstraint(moCntnrBody, moCntnrBody2, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, blockSize*0.2, 0),
+    pivotB: new CANNON.Vec3(0, 0, 0),
+    collideConnected: true,
+  });
+  world.addConstraint(hingeConst);
+  const hingeConst2 = new CANNON.HingeConstraint(moCntnrBody, moCntnrBody2, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, blockSize*0.2, blockSize*0.4),
+    pivotB: new CANNON.Vec3(0, 0, blockSize*0.4),
+    collideConnected: true,
+  });
+  world.addConstraint(hingeConst2);
+  const hingeConst3 = new CANNON.HingeConstraint(moCntnrBody, moCntnrBody2, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, blockSize*0.2, -blockSize*0.4),
+    pivotB: new CANNON.Vec3(0, 0, -blockSize*0.4),
+    collideConnected: true,
+  });
+  world.addConstraint(hingeConst3);
+  // 描画を自動で更新させるために postStepにイベント追加
+  world.addEventListener('postStep', () => {
+    viCntnrMesh2.position.copy(moCntnrBody2.position);
+    viCntnrMesh2.quaternion.copy(moCntnrBody2.quaternion);
+  })
+}
+
+
+export function ForkH_00(x,y,z,rot) {
+  // fork_h
+  // 分岐　水平　10x10x10
+  //   細い直方体２本＋板２枚で表現
+  // x,y,z : レールの部品のmin側：表示位置
+  // rot : 90度単位
+  //  [top]
+  //  +-----+
+  //  | | | |
+  //  |＋─ |
+  //  | | | |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |     |
+  //  | *-* |
+  //  +-----+
+  var sx = blockSize; var sy = 1; var sz = 1;
+  var sx_ = sx/2; var sy_ = sy/2; var sz_ = sz/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  var px = 0; var py = 0; var pz = railIntr_;
+  var pxyzlist = [[px, py, pz],
+                  [px, py, -pz]];
+  // ガイド板
+  var sxyz2list = [[blockSize, blockSize, 0.1],
+                   [blockSize, 0.1, blockSize],
+                   [0.1,  0.1,  blockSize],];
+  var pxyz2list = [[ 0, blockSize_, -blockSize_],
+                   [ 0, blockSize, 0],
+                   [ 0, 0, 0],];
+  var adjx = blockSize_; var adjy = blockSize_; var adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0];
+    var pyy = pxyzlist[ii][1];
+    var pzz = pxyzlist[ii][2];
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  for (var ii = 0; ii < pxyz2list.length; ++ii) {
+    var pxx = pxyz2list[ii][0];
+    var pyy = pxyz2list[ii][1];
+    var pzz = pxyz2list[ii][2];
+    var sxx = sxyz2list[ii][0];
+    var syy = sxyz2list[ii][1];
+    var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2;
+    var syy_ = syy/2;
+    var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    // ガイドの表示はwireframeで 
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({color: 0xa0a0a0, transparent: true, opacity: 0.2, wireframe:true});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    // viObj2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    const viObj2Geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(0, blockSize_, 0));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Windmill_00(x,y,z,rot) {
+  // windmill_h
+  // 風車　水平　20x10x20  動力なし
+  //   羽4枚（板２枚)で表現
+  //  [top]
+  //  +-----+-----+
+  //  |           |
+  //  |     ||    |
+  //  |     ||    |
+  //  + ──＋──|
+  //  |     ||    |
+  //  |     ||    |
+  //  |           |
+  //  +-----+-----+
+  //  [side]
+  //  +-----+-----+
+  //  | +-------+ |
+  //  | +-------+ |
+  //  +-----+-----+
+  // 羽
+  var sW = blockSize*1.8; var sH = blockSize*0.5; var sD = 0.1;
+  var sH_ = sH/2;
+  var sxyzlist = [[sW, sH, sD],  // x軸方向
+                  [sD, sH, sW]]; // z軸方向
+  var pxyzlist = [[0, 0, 0],
+                  [0, 0, 0]];
+  // 土台（ポール：Y軸）
+  var sxyz2list = [[sD, sH, sD]];
+  var pxyz2list = [[0, 0, 0]];
+  // 羽を組み立て
+  const moCntnrBody = new CANNON.Body({
+    mass: 0.01,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  // 土台..簡単にbox１つですませる
+  var moBase2Body;
+  var viBase2Mesh;
+  {
+    var ii = 0;
+    var pxx = pxyz2list[ii][0]; var pyy = pxyz2list[ii][1]; var pzz = pxyz2list[ii][2];
+    var sxx = sxyz2list[ii][0]; var syy = sxyz2list[ii][1]; var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var moBase2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+        position: new CANNON.Vec3(pxx, pyy, pzz),
+       });
+    const viBase2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viBase2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.2, color: 0x000000});
+    var viBase2Mesh = new THREE.Mesh(viBase2Geo, viBase2Mtr);
+  }
+  var adjx = blockSize; var adjy = blockSize_+ballR; var adjz = blockSize;
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  moBase2Body.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moBase2Body.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+  viBase2Mesh.position.copy(moBase2Body.position);
+  viBase2Mesh.quaternion.copy(moBase2Body.quaternion);
+  world.addBody(moBase2Body);
+  scene.add(viBase2Mesh);
+  // 風車の動きの制約（ヒンジで繋ぐ：３か所で固定。１か所だけでは壊れる
+  const hingeConst = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 1, 0),
+    axisB: new CANNON.Vec3(0, 1, 0),
+    pivotA: new CANNON.Vec3(0, 0, 0),
+    pivotB: new CANNON.Vec3(0, 0, 0),
+    collideConnected: false,  // 軸と風車がすり抜けるように
+  });
+  world.addConstraint(hingeConst);
+  const hingeConst2 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 1, 0),
+    axisB: new CANNON.Vec3(0, 1, 0),
+    pivotA: new CANNON.Vec3(0, sH_, 0),
+    pivotB: new CANNON.Vec3(0, sH_, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst2);
+  const hingeConst3 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 1, 0),
+    axisB: new CANNON.Vec3(0, 1, 0),
+    pivotA: new CANNON.Vec3(0, -sH_, 0),
+    pivotB: new CANNON.Vec3(0, -sH_, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst3);
+  // 描画を自動で更新させるために postStepにイベント追加
+  world.addEventListener('postStep', () => {
+    viCntnrMesh.position.copy(moCntnrBody.position);
+    viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  })
+}
+
+
+export function Windmill_01(x,y,z,rot) {
+  // windmill_v
+  // 風車　垂直　20x20x10  動力なし
+  //   羽4枚（板２枚)で表現
+  //  [top]
+  //  +-----+-----+
+  //  | +-------+ |
+  //  | +-------+ |
+  //  +-----+-----+
+  //  [side]
+  //  +-----+-----+
+  //  |           |
+  //  |     ||    |
+  //  |     ||    |
+  //  + ──＋──|
+  //  |     ||    |
+  //  |     ||    |
+  //  |           |
+  //  +-----+-----+
+  // 羽
+  var sW = blockSize*1.8; var sH = blockSize*0.5; var sD = 0.1;
+  var sH_ = sH/2;
+  var sxyzlist = [[sW, sD, sH],  // x軸方向
+                  [sD, sW, sH]]; // y軸方向
+  var pxyzlist = [[0, 0, 0],
+                  [0, 0, 0]];
+  // 土台（ポール：Z軸）
+  var sxyz2list = [[sD, sD, sH]];
+  var pxyz2list = [[0, 0, 0]];
+  // 羽を組み立て
+  const moCntnrBody = new CANNON.Body({
+    mass: 0.01,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  // 土台..簡単にbox１つですませる
+  var moBase2Body;
+  var viBase2Mesh;
+  {
+    var ii = 0;
+    var pxx = pxyz2list[ii][0]; var pyy = pxyz2list[ii][1]; var pzz = pxyz2list[ii][2];
+    var sxx = sxyz2list[ii][0]; var syy = sxyz2list[ii][1]; var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var moBase2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+        position: new CANNON.Vec3(pxx, pyy, pzz),
+       });
+    const viBase2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viBase2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.2, color: 0x000000});
+    var viBase2Mesh = new THREE.Mesh(viBase2Geo, viBase2Mtr);
+  }
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjxlist = [blockSize_*2, blockSize_*1, blockSize_*2, blockSize_*1];
+  var adjzlist = [blockSize_*1, blockSize_*2, blockSize_*1, blockSize_*2];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_*3;
+  var adjz = adjzlist[rot%4];
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  moBase2Body.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moBase2Body.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+  viBase2Mesh.position.copy(moBase2Body.position);
+  viBase2Mesh.quaternion.copy(moBase2Body.quaternion);
+  world.addBody(moBase2Body);
+  scene.add(viBase2Mesh);
+  // 風車の動きの制約（ヒンジで繋ぐ：３か所で固定
+  const hingeConst = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, 0, 0),
+    pivotB: new CANNON.Vec3(0, 0, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst);
+  const hingeConst2 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, 0, sH_),
+    pivotB: new CANNON.Vec3(0, 0, sH_),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst2);
+  const hingeConst3 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, 0, -sH_),
+    pivotB: new CANNON.Vec3(0, 0, -sH_),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst3);
+  // 描画を自動で更新させるために postStepにイベント追加
+  world.addEventListener('postStep', () => {
+    viCntnrMesh.position.copy(moCntnrBody.position);
+    viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  })
+}
+
+export function Windmill_02(x,y,z,rot) {
+  // windmill_h2
+  // 風車　水平　20x10x20  動力あり
+  //   羽4枚（板２枚)で表現
+  //  [top]
+  //  +-----+-----+
+  //  |           |
+  //  |     ||    |
+  //  |     ||    |
+  //  + ──＋──|
+  //  |     ||    |
+  //  |     ||    |
+  //  |           |
+  //  +-----+-----+
+  //  [side]
+  //  +-----+-----+
+  //  | +-------+ |
+  //  | +-------+ |
+  //  +-----+-----+
+  // 羽
+  var sW = blockSize*1.8; var sH = blockSize*0.5; var sD = 0.1;
+  var sH_ = sH/2;
+  var sxyzlist = [[sW, sH, sD],  // x軸方向
+                  [sD, sH, sW]]; // z軸方向
+  var pxyzlist = [[0, 0, 0],
+                  [0, 0, 0]];
+  // 土台（ポール：Y軸）
+  var sxyz2list = [[sD, sH, sD]];
+  var pxyz2list = [[0, 0, 0]];
+  // 羽を組み立て
+  const moCntnrBody = new CANNON.Body({
+    mass: 0.01,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  // 土台..簡単にbox１つですませる
+  var moBase2Body;
+  var viBase2Mesh;
+  {
+    var ii = 0;
+    var pxx = pxyz2list[ii][0]; var pyy = pxyz2list[ii][1]; var pzz = pxyz2list[ii][2];
+    var sxx = sxyz2list[ii][0]; var syy = sxyz2list[ii][1]; var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var moBase2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+        position: new CANNON.Vec3(pxx, pyy, pzz),
+       });
+    const viBase2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viBase2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.2, color: 0x000000});
+    var viBase2Mesh = new THREE.Mesh(viBase2Geo, viBase2Mtr);
+  }
+  var adjx = blockSize; var adjy = blockSize_+ballR; var adjz = blockSize;
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  moBase2Body.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moBase2Body.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+  viBase2Mesh.position.copy(moBase2Body.position);
+  viBase2Mesh.quaternion.copy(moBase2Body.quaternion);
+  world.addBody(moBase2Body);
+  scene.add(viBase2Mesh);
+  // 風車の動きの制約（ヒンジで繋ぐ：３か所で固定
+  const hingeConst = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 1, 0),
+    axisB: new CANNON.Vec3(0, 1, 0),
+    pivotA: new CANNON.Vec3(0, 0, 0),
+    pivotB: new CANNON.Vec3(0, 0, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst);
+  const hingeConst2 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 1, 0),
+    axisB: new CANNON.Vec3(0, 1, 0),
+    pivotA: new CANNON.Vec3(0, sH_, 0),
+    pivotB: new CANNON.Vec3(0, sH_, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst2);
+  const hingeConst3 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 1, 0),
+    axisB: new CANNON.Vec3(0, 1, 0),
+    pivotA: new CANNON.Vec3(0, -sH_, 0),
+    pivotB: new CANNON.Vec3(0, -sH_, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst3);
+  // 動力を付与
+  var vspeed = 0.2
+  if (rot >= 2) {
+    vspeed = -vspeed;
+  }
+  hingeConst.enableMotor();
+  hingeConst.setMotorSpeed(vspeed);
+  hingeConst2.enableMotor();
+  hingeConst2.setMotorSpeed(vspeed);
+  hingeConst3.enableMotor();
+  hingeConst3.setMotorSpeed(vspeed);
+  // 描画を自動で更新させるために postStepにイベント追加
+  world.addEventListener('postStep', () => {
+    viCntnrMesh.position.copy(moCntnrBody.position);
+    viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  })
+}
+
+export function Windmill_03(x,y,z,rot) {
+  // windmill_v2
+  // 風車　垂直　20x20x10  動力なし
+  //   羽4枚（板２枚)で表現
+  //  [top]
+  //  +-----+-----+
+  //  | +-------+ |
+  //  | +-------+ |
+  //  +-----+-----+
+  //  [side]
+  //  +-----+-----+
+  //  |           |
+  //  |     ||    |
+  //  |     ||    |
+  //  + ──＋──|
+  //  |     ||    |
+  //  |     ||    |
+  //  |           |
+  //  +-----+-----+
+  // 羽
+  var sW = blockSize*1.8; var sH = blockSize*0.5; var sD = 0.1;
+  var sH_ = sH/2;
+  var sxyzlist = [[sW, sD, sH],  // x軸方向
+                  [sD, sW, sH]]; // y軸方向
+  var pxyzlist = [[0, 0, 0],
+                  [0, 0, 0]];
+  // 土台（ポール：Z軸）
+  var sxyz2list = [[sD, sD, sH]];
+  var pxyz2list = [[0, 0, 0]];
+  // 羽を組み立て
+  const moCntnrBody = new CANNON.Body({
+    mass: 0.01,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  // 土台..簡単にbox１つですませる
+  var moBase2Body;
+  var viBase2Mesh;
+  {
+    var ii = 0;
+    var pxx = pxyz2list[ii][0]; var pyy = pxyz2list[ii][1]; var pzz = pxyz2list[ii][2];
+    var sxx = sxyz2list[ii][0]; var syy = sxyz2list[ii][1]; var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var moBase2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+        position: new CANNON.Vec3(pxx, pyy, pzz),
+       });
+    const viBase2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viBase2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.2, color: 0x000000});
+    var viBase2Mesh = new THREE.Mesh(viBase2Geo, viBase2Mtr);
+  }
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjxlist = [blockSize_*2, blockSize_*1, blockSize_*2, blockSize_*1];
+  var adjzlist = [blockSize_*1, blockSize_*2, blockSize_*1, blockSize_*2];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_*3;
+  var adjz = adjzlist[rot%4];
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  moBase2Body.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moBase2Body.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+  viBase2Mesh.position.copy(moBase2Body.position);
+  viBase2Mesh.quaternion.copy(moBase2Body.quaternion);
+  world.addBody(moBase2Body);
+  scene.add(viBase2Mesh);
+  // 風車の動きの制約（ヒンジで繋ぐ：３か所で固定
+  const hingeConst = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, 0, 0),
+    pivotB: new CANNON.Vec3(0, 0, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst);
+  const hingeConst2 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, 0, sH_),
+    pivotB: new CANNON.Vec3(0, 0, sH_),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst2);
+  const hingeConst3 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, 0, -sH_),
+    pivotB: new CANNON.Vec3(0, 0, -sH_),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst3);
+  // 動力を付与
+  var vspeed = 0.2
+  hingeConst.enableMotor();
+  hingeConst.setMotorSpeed(vspeed);
+  hingeConst2.enableMotor();
+  hingeConst2.setMotorSpeed(vspeed);
+  hingeConst3.enableMotor();
+  hingeConst3.setMotorSpeed(vspeed);
+  // 描画を自動で更新させるために postStepにイベント追加
+  world.addEventListener('postStep', () => {
+    viCntnrMesh.position.copy(moCntnrBody.position);
+    viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  })
+}
+
+export function Windmill_04(x,y,z,rot) {
+  // windmill_h3
+  // 風車　水平　20x10x20  動力あり(重量級)
+  // .. 重いからとトルクがかかっているわけではないので、物理的に挟まると動かない..
+  //   羽4枚（板２枚)で表現
+  //  [top]
+  //  +-----+-----+
+  //  |           |
+  //  |     ||    |
+  //  |     ||    |
+  //  + ──＋──|
+  //  |     ||    |
+  //  |     ||    |
+  //  |           |
+  //  +-----+-----+
+  //  [side]
+  //  +-----+-----+
+  //  | +-------+ |
+  //  | +-------+ |
+  //  +-----+-----+
+  // 羽
+  var sW = blockSize*1.8; var sH = blockSize*0.5; var sD = 0.1;
+  var sH_ = sH/2;
+  var sxyzlist = [[sW, sH, sD],  // x軸方向
+                  [sD, sH, sW]]; // z軸方向
+  var pxyzlist = [[0, 0, 0],
+                  [0, 0, 0]];
+  // 土台（ポール：Y軸）
+  var sxyz2list = [[sD, sH, sD]];
+  var pxyz2list = [[0, 0, 0]];
+  // 羽を組み立て
+  const moCntnrBody = new CANNON.Body({
+    mass: 100,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  // 土台..簡単にbox１つですませる
+  var moBase2Body;
+  var viBase2Mesh;
+  {
+    var ii = 0;
+    var pxx = pxyz2list[ii][0]; var pyy = pxyz2list[ii][1]; var pzz = pxyz2list[ii][2];
+    var sxx = sxyz2list[ii][0]; var syy = sxyz2list[ii][1]; var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var moBase2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+        position: new CANNON.Vec3(pxx, pyy, pzz),
+       });
+    const viBase2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viBase2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.2, color: 0x000000});
+    var viBase2Mesh = new THREE.Mesh(viBase2Geo, viBase2Mtr);
+  }
+  var adjx = blockSize; var adjy = blockSize_+ballR; var adjz = blockSize;
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  moBase2Body.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moBase2Body.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+  viBase2Mesh.position.copy(moBase2Body.position);
+  viBase2Mesh.quaternion.copy(moBase2Body.quaternion);
+  world.addBody(moBase2Body);
+  scene.add(viBase2Mesh);
+  // 風車の動きの制約（ヒンジで繋ぐ：３か所で固定
+  const hingeConst = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 1, 0),
+    axisB: new CANNON.Vec3(0, 1, 0),
+    pivotA: new CANNON.Vec3(0, 0, 0),
+    pivotB: new CANNON.Vec3(0, 0, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst);
+  const hingeConst2 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 1, 0),
+    axisB: new CANNON.Vec3(0, 1, 0),
+    pivotA: new CANNON.Vec3(0, sH_, 0),
+    pivotB: new CANNON.Vec3(0, sH_, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst2);
+  const hingeConst3 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 1, 0),
+    axisB: new CANNON.Vec3(0, 1, 0),
+    pivotA: new CANNON.Vec3(0, -sH_, 0),
+    pivotB: new CANNON.Vec3(0, -sH_, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst3);
+  // 動力を付与
+  var vspeed = 0.2
+  if (rot >= 2) {
+    vspeed = -vspeed;
+  }
+  hingeConst.enableMotor();
+  hingeConst.setMotorSpeed(vspeed);
+  hingeConst2.enableMotor();
+  hingeConst2.setMotorSpeed(vspeed);
+  hingeConst3.enableMotor();
+  hingeConst3.setMotorSpeed(vspeed);
+  // 描画を自動で更新させるために postStepにイベント追加
+  world.addEventListener('postStep', () => {
+    viCntnrMesh.position.copy(moCntnrBody.position);
+    viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  })
+}
+
+export function Windmill_05(x,y,z,rot) {
+  // windmill_v3
+  // 風車　垂直　20x20x10  動力なし(重量級)
+  // .. 重いからとトルクがかかっているわけではないので、物理的に挟まると動かない..
+  //   羽4枚（板２枚)で表現
+  //  [top]
+  //  +-----+-----+
+  //  | +-------+ |
+  //  | +-------+ |
+  //  +-----+-----+
+  //  [side]
+  //  +-----+-----+
+  //  |           |
+  //  |     ||    |
+  //  |     ||    |
+  //  + ──＋──|
+  //  |     ||    |
+  //  |     ||    |
+  //  |           |
+  //  +-----+-----+
+  // 羽
+  var sW = blockSize*1.8; var sH = blockSize*0.5; var sD = 0.1;
+  var sH_ = sH/2;
+  var sxyzlist = [[sW, sD, sH],  // x軸方向
+                  [sD, sW, sH]]; // y軸方向
+  var pxyzlist = [[0, 0, 0],
+                  [0, 0, 0]];
+  // 土台（ポール：Z軸）
+  var sxyz2list = [[sD, sD, sH]];
+  var pxyz2list = [[0, 0, 0]];
+  // 羽を組み立て
+  const moCntnrBody = new CANNON.Body({
+    mass: 100,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  // 土台..簡単にbox１つですませる
+  var moBase2Body;
+  var viBase2Mesh;
+  {
+    var ii = 0;
+    var pxx = pxyz2list[ii][0]; var pyy = pxyz2list[ii][1]; var pzz = pxyz2list[ii][2];
+    var sxx = sxyz2list[ii][0]; var syy = sxyz2list[ii][1]; var szz = sxyz2list[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    var moBase2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+        position: new CANNON.Vec3(pxx, pyy, pzz),
+       });
+    const viBase2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viBase2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.2, color: 0x000000});
+    var viBase2Mesh = new THREE.Mesh(viBase2Geo, viBase2Mtr);
+  }
+//  var adjx = 0; var adjy = 0; var adjz = 0;
+  var adjxlist = [blockSize_*2, blockSize_*1, blockSize_*2, blockSize_*1];
+  var adjzlist = [blockSize_*1, blockSize_*2, blockSize_*1, blockSize_*2];
+  var adjx = adjxlist[rot%4];
+  var adjy = blockSize_*3;
+  var adjz = adjzlist[rot%4];
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  moBase2Body.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moBase2Body.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+  viBase2Mesh.position.copy(moBase2Body.position);
+  viBase2Mesh.quaternion.copy(moBase2Body.quaternion);
+  world.addBody(moBase2Body);
+  scene.add(viBase2Mesh);
+  // 風車の動きの制約（ヒンジで繋ぐ：３か所で固定
+  const hingeConst = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, 0, 0),
+    pivotB: new CANNON.Vec3(0, 0, 0),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst);
+  const hingeConst2 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, 0, sH_),
+    pivotB: new CANNON.Vec3(0, 0, sH_),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst2);
+  const hingeConst3 = new CANNON.HingeConstraint(moCntnrBody, moBase2Body, {
+    axisA: new CANNON.Vec3(0, 0, 1),
+    axisB: new CANNON.Vec3(0, 0, 1),
+    pivotA: new CANNON.Vec3(0, 0, -sH_),
+    pivotB: new CANNON.Vec3(0, 0, -sH_),
+    collideConnected: false,
+  });
+  world.addConstraint(hingeConst3);
+  // 動力を付与
+  var vspeed = 0.2
+  hingeConst.enableMotor();
+  hingeConst.setMotorSpeed(vspeed);
+  hingeConst2.enableMotor();
+  hingeConst2.setMotorSpeed(vspeed);
+  hingeConst3.enableMotor();
+  hingeConst3.setMotorSpeed(vspeed);
+  // 描画を自動で更新させるために postStepにイベント追加
+  world.addEventListener('postStep', () => {
+    viCntnrMesh.position.copy(moCntnrBody.position);
+    viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  })
+}
+
+
+export function Tree_00(x,y,z,rot) {
+  // tree_00
+  // 木 10x10x10
+  //  [top]
+  //  +-----+
+  //  | +-+ |
+  //  | +-+ |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |  ** |
+  //  | ****|
+  //  |  || |
+  //  +-----+
+  let adjx = blockSize_;
+  let adjy = 0;
+  let adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let radiusTop = 0.8, radiusBottom = 5, height = 9, numSegment = 8;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(0, blockSize_, 0));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9, color:"#00a000"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(0, blockSize_, 0));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Tree_01(x,y,z,rot) {
+  // tree_01
+  // 木 20x30x20
+  //  [top]
+  //  +-----+
+  //  | +-+ |
+  //  | +-+ |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |  ** |
+  //  | ****|
+  //  |  || |
+  //  +-----+
+  let adjx = blockSize;
+  let adjy = 0;
+  let adjz = blockSize;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let radiusTop = 0.8, radiusBottom = 5, height = 9, numSegment = 8;
+    let pxx = 0, pyy = 24, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9, color:"#00a000"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radiusTop = 2, radiusBottom = 10, height = 19, numSegment = 8;
+    let pxx = 0, pyy = 10, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9, color:"#00a000"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radiusTop = 2, radiusBottom = 10, height = 19, numSegment = 8;
+    let pxx = 0, pyy = 10, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9, color:"#008000"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Tree_02(x,y,z,rot) {
+  // tree_02
+  // 木 40x60x40
+  //  [top]
+  //  +-----+
+  //  | +-+ |
+  //  | +-+ |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |  ** |
+  //  | ****|
+  //  |  || |
+  //  +-----+
+  let adjx = blockSize*2;
+  let adjy = 0;
+  let adjz = blockSize*2;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let radiusTop = 0.8, radiusBottom = 5, height = 9, numSegment = 8;
+    let pxx = 0, pyy = 53, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9, color:"#00c000"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radiusTop = 2, radiusBottom = 10, height = 19, numSegment = 8;
+    let pxx = 0, pyy = 39, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9, color:"#00a000"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radiusTop = 5, radiusBottom = 20, height = 29, numSegment = 8;
+    let pxx = 0, pyy = 15, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9, color:"#008000"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Pole_01(x,y,z,rot) {
+  // pole_01_h50
+  // ポール／縦の棒 10x50x10
+  //  [top]
+  //  +-----+
+  //  | +-+ |
+  //  | +-+ |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |  ** |
+  //  | ****|
+  //  |  || |
+  //  +-----+
+  let adjx = blockSize_;
+  let adjy = 0;
+  let adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let radiusTop = 5, radiusBottom = 5, height = 50, numSegment = 8;
+    let pxx = 0, pyy = 25, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Pole_02(x,y,z,rot) {
+  // pole_01_h100
+  // ポール／縦の棒 10x100x10
+  //  [top]
+  //  +-----+
+  //  | +-+ |
+  //  | +-+ |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |  ** |
+  //  | ****|
+  //  |  || |
+  //  +-----+
+  let adjx = blockSize_;
+  let adjy = 0;
+  let adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let radiusTop = 5, radiusBottom = 5, height = 100, numSegment = 8;
+    let pxx = 0, pyy = 50, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Pole_03(x,y,z,rot) {
+  // pole_02_h20
+  // ポール／縦の棒 10x20x10
+  //  [top]
+  //  +-----+
+  //  | +-+ |
+  //  | +-+ |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |  ** |
+  //  | ****|
+  //  |  || |
+  //  +-----+
+  let adjx = blockSize_;
+  let adjy = 0;
+  let adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let radiusTop = 1, radiusBottom = 1, height = 20, numSegment = 8;
+    let pxx = 0, pyy = 10, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.6, color:"#0000ff"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Pole_04(x,y,z,rot) {
+  // pole_02_h40
+  // ポール／縦の棒 10x40x10
+  //  [top]
+  //  +-----+
+  //  | +-+ |
+  //  | +-+ |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |  ** |
+  //  | ****|
+  //  |  || |
+  //  +-----+
+  let adjx = blockSize_;
+  let adjy = 0;
+  let adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let radiusTop = 1, radiusBottom = 1, height = 20, numSegment = 8;
+    let pxx = 0, pyy = 10, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.6, color:"#0000ff"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radiusTop = 1, radiusBottom = 1, height = 20, numSegment = 8;
+    let pxx = 0, pyy = 30, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.6, color:"#8080ff"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Pole_05(x,y,z,rot) {
+  // pole_02_h60
+  // ポール／縦の棒 10x60x10
+  //  [top]
+  //  +-----+
+  //  | +-+ |
+  //  | +-+ |
+  //  +-----+
+  //  [side]
+  //  +-----+
+  //  |  ** |
+  //  | ****|
+  //  |  || |
+  //  +-----+
+  let adjx = blockSize_;
+  let adjy = 0;
+  let adjz = blockSize_;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let radiusTop = 1, radiusBottom = 1, height = 20, numSegment = 8;
+    let pxx = 0, pyy = 10, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.6, color:"#0000ff"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radiusTop = 1, radiusBottom = 1, height = 20, numSegment = 8;
+    let pxx = 0, pyy = 30, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.6, color:"#8080ff"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radiusTop = 1, radiusBottom = 1, height = 20, numSegment = 8;
+    let pxx = 0, pyy = 50, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Cylinder(radiusTop, radiusBottom, height, numSegment),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, numSegment);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.6, color:"#c0c0ff"});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+
+export function Plate_01(x,y,z,rot) {
+  // plate_01_30x1x10
+  // プレート／平らな板 30x1x10
+  let adjxlist = [blockSize_*0, blockSize_*0, blockSize_*6, blockSize_*2];
+  let adjzlist = [blockSize_*0, blockSize_*6, blockSize_*2, blockSize_*0];
+  let adjx = adjxlist[rot%4];
+  let adjy = 0;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let sxx = 30, syy = 1, szz = 10;
+    let sxx_ = sxx/2, syy_ = syy/2, szz_ = szz/2;
+    let pxx = sxx_, pyy = syy_, pzz = szz_;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_,szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.6});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Plate_02(x,y,z,rot) {
+  // plate_01_50x1x10
+  // プレート／平らな板 50x1x10
+  let adjxlist = [blockSize_*0, blockSize_*0, blockSize_*10, blockSize_*2];
+  let adjzlist = [blockSize_*0, blockSize_*10, blockSize_*2, blockSize_*0];
+  let adjx = adjxlist[rot%4];
+  let adjy = 0;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let sxx = 50, syy = 1, szz = 10;
+    let sxx_ = sxx/2, syy_ = syy/2, szz_ = szz/2;
+    let pxx = sxx_, pyy = syy_, pzz = szz_;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_,szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.6});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Plate_03(x,y,z,rot) {
+  // plate_01_70x1x10
+  // プレート／平らな板 70x1x10
+  let adjxlist = [blockSize_*0, blockSize_*0, blockSize_*14, blockSize_*2];
+  let adjzlist = [blockSize_*0, blockSize_*14, blockSize_*2, blockSize_*0];
+  let adjx = adjxlist[rot%4];
+  let adjy = 0;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let sxx = 70, syy = 1, szz = 10;
+    let sxx_ = sxx/2, syy_ = syy/2, szz_ = szz/2;
+    let pxx = sxx_, pyy = syy_, pzz = szz_;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_,szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.6});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Box_01(x,y,z,rot) {
+  // box_01_10x10x10
+  // ボックス
+  let adjx = 0;
+  let adjy = 0;
+  let adjz = 0;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let sxx = 10, syy = 10, szz = 10;
+    let sxx_ = sxx/2, syy_ = syy/2, szz_ = szz/2;
+    let pxx = sxx_, pyy = syy_, pzz = szz_;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_,szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshNormalMaterial({transparent: true, opacity: 0.6});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Box_02(x,y,z,rot) {
+  // box_01_30x30x30
+  // ボックス
+  let adjx = 0;
+  let adjy = 0;
+  let adjz = 0;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let sxx = 30, syy = 30, szz = 30;
+    let sxx_ = sxx/2, syy_ = syy/2, szz_ = szz/2;
+    let pxx = sxx_, pyy = syy_, pzz = szz_;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_,szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshNormalMaterial({transparent: true, opacity: 0.6});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Box_03(x,y,z,rot) {
+  // box_01_50x50x50
+  // ボックス
+  let adjx = 0;
+  let adjy = 0;
+  let adjz = 0;
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let sxx = 50, syy = 50, szz = 50;
+    let sxx_ = sxx/2, syy_ = syy/2, szz_ = szz/2;
+    let pxx = sxx_, pyy = syy_, pzz = szz_;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_,szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viObj2Mtr = new THREE.MeshNormalMaterial({transparent: true, opacity: 0.6});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Fog_01(x,y,z,rot) {
+  // fog_01_100x100x100
+  // 霧を試しに球で表現してみる...失敗
+  let adjx = 0;
+  let adjy = 0;
+  let adjz = 0;
+  const viCntnrMesh = new THREE.Group();
+  let radiusL = 50;
+  {
+    let radius = 35;
+    let pxx = radiusL, pyy = radiusL, pzz = radiusL;
+    const viObj2Geo = new THREE.SphereGeometry(radius);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.8});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radius = 40;
+    let pxx = radiusL, pyy = radiusL, pzz = radiusL;
+    const viObj2Geo = new THREE.SphereGeometry(radius);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.5});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radius = 45;
+    let pxx = radiusL, pyy = radiusL, pzz = radiusL;
+    const viObj2Geo = new THREE.SphereGeometry(radius);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.2});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radius = 50;
+    let pxx = radiusL, pyy = radiusL, pzz = radiusL;
+    const viObj2Geo = new THREE.SphereGeometry(radius);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  // moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  // if (rot != 0) {
+  //   moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  // }
+  // viCntnrMesh.position.copy(moCntnrBody.position);
+  // viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  // world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export class Fog_02 {
+  // 黒霧
+  //   領域に入ると黒霧が発生
+  //   領域を抜けると戻る
+  x_;
+  y_;
+  z_;
+  r_;
+
+  constructor(x, y, z, r) {
+    this.x_ = x;
+    this.y_ = y;
+    this.z_ = z;
+    this.r_ = r;
+    this.init()
+  }
+
+  init() {
+    let radius = this.r_;
+    const moObj2Body = new CANNON.Body
+      ({mass: 0,
+        shape: new CANNON.Sphere(radius),
+        position: new CANNON.Vec3(this.x_, this.y_, this.z_),
+        isTrigger: true,
+       });
+    world.addBody(moObj2Body);
+    const viObj2Geo = new THREE.SphereGeometry(radius);
+    const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.2, color: 0x222222});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(this.x_, this.y_, this.z_));
+    scene.add(viObj2Mesh);
+    moObj2Body.addEventListener("collide", this.eventEnter);
+    world.addEventListener("endContact", this.eventExit);
+  }
+
+  eventEnter (e) {
+console.log("fog2, enter");
+    var moFog  = e.contact.bi;
+    var moObj = e.contact.bj;
+    if (moObj.mass == 0) {
+      [moFog, moObj] = [moObj, moFog];
+    }
+    if ((moObj.bDrone != undefined) && (moObj.bDrone == 1)) {
+      scene.fog = new THREE.Fog(0x222222, 0, 100)
+    }
+  }
+
+  eventExit (e) {
+console.log("fog2, exit");
+    var moFog  = e.bodyA;
+    var moObj = e.bodyB;
+    if (moObj.mass == 0) {
+      [moFog, moObj] = [moObj, moFog];
+    }
+    if ((moObj.bDrone != undefined) && (moObj.bDrone == 1)) {
+      scene.fog = new THREE.Fog(0x222222, 1000, 2000)
+    }
+  }
+
+}
+
+
+export function Ring_01(x,y,z,rot) {
+  // ring_01_10x10x10
+  // リング／ドーナツ
+  //  なぜかリングの形状がすり抜ける...
+  let adjxlist = [blockSize_*0, blockSize_*0, blockSize_*6, blockSize_*2];
+  let adjzlist = [blockSize_*0, blockSize_*6, blockSize_*2, blockSize_*0];
+  let adjx = adjxlist[rot%4];
+  let adjy = 0;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0.1,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  {
+    let radius = 4, tube = 1, radialSegment = 16, tubularSegments = 100;
+    let pxx = 5, pyy = 5, pzz = 0;
+    moCntnrBody.addShape(CANNON.Trimesh.createTorus(radius, tube, radialSegment, tubularSegments),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.TorusGeometry(radius, tube, radialSegment, tubularSegments);
+    const viObj2Mtr = new THREE.MeshNormalMaterial({transparent: true, opacity: 0.6});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  {
+    let radius = 1;
+    let pxx = 5, pyy = 10, pzz = 0;
+    moCntnrBody.addShape(new CANNON.Sphere(radius),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viObj2Geo = new THREE.SphereGeometry(radius);
+    const viObj2Mtr = new THREE.MeshNormalMaterial({transparent: true, opacity: 0.6});
+    const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+    viObj2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+
+  world.addEventListener('postStep', () => {
+    viCntnrMesh.position.copy(moCntnrBody.position);
+    viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  })
+}
+
+export function Ring_02(x,y,z,rot) {
+}
+
+export function Ring_03(x,y,z,rot) {
+}
+
+export function Ring_11(x,y,z,rot) {
+  // ring_02_10x10x10
+  // リング／四角の和、直方体４つで構成
+  let sL = blockSize*1, sS = 1; let sL_ = sL/2, sS_ = sS/2; let mrgL = sL_-sS_;
+  let sLadj = sL - sS;
+  let sxyzlist = [[sLadj,    sS, sS],  // 上辺
+                  [   sS, sLadj, sS],  // 右辺
+                  [sLadj,    sS, sS],  // 下辺
+                  [   sS, sLadj, sS]]; // 左辺
+  let pxyzlist = [[  sS_, mrgL, 0],
+                  [ mrgL, -sS_, 0],
+                  [ -sS_,-mrgL, 0],
+                  [-mrgL,  sS_, 0]];
+  let adjxlist = [blockSize_*1, blockSize_*1, blockSize_*1, blockSize_*1];
+  let adjzlist = [blockSize_*1, blockSize_*1, blockSize_*1, blockSize_*1];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+    adjx = adjxlist[rot%4];
+    adjy = blockSize_;
+    adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Ring_12(x,y,z,rot) {
+  // ring_02_20x20x10
+  // リング／四角の和、直方体４つで構成
+  let sL = blockSize*2, sS = 1; let sL_ = sL/2, sS_ = sS/2; let mrgL = sL_-sS_;
+  let sLadj = sL - sS;
+  let sxyzlist = [[sLadj,    sS, sS],  // 上辺
+                  [   sS, sLadj, sS],  // 右辺
+                  [sLadj,    sS, sS],  // 下辺
+                  [   sS, sLadj, sS]]; // 左辺
+  let pxyzlist = [[  sS_, mrgL, 0],
+                  [ mrgL, -sS_, 0],
+                  [ -sS_,-mrgL, 0],
+                  [-mrgL,  sS_, 0]];
+  let adjxlist = [blockSize_*2, blockSize_*1, blockSize_*2, blockSize_*1];
+  let adjzlist = [blockSize_*1, blockSize_*2, blockSize_*1, blockSize_*2];
+  let adjx = blockSize_*2;
+  let adjy = blockSize_*2;
+  let adjz = blockSize_*2;
+  if (rot == Math.ceil(rot)) {
+    adjx = adjxlist[rot%4];
+    adjy = blockSize_*2;
+    adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function Ring_13(x,y,z,rot) {
+  // ring_02_30x30x10
+  // リング／四角の和、直方体４つで構成
+  let sL = blockSize*3, sS = 1; let sL_ = sL/2, sS_ = sS/2; let mrgL = sL_-sS_;
+  let sLadj = sL - sS;
+  let sxyzlist = [[sLadj,    sS, sS],  // 上辺
+                  [   sS, sLadj, sS],  // 右辺
+                  [sLadj,    sS, sS],  // 下辺
+                  [   sS, sLadj, sS]]; // 左辺
+  let pxyzlist = [[  sS_, mrgL, 0],
+                  [ mrgL, -sS_, 0],
+                  [ -sS_,-mrgL, 0],
+                  [-mrgL,  sS_, 0]];
+  let adjxlist = [blockSize_*3, blockSize_*1, blockSize_*3, blockSize_*1];
+  let adjzlist = [blockSize_*1, blockSize_*3, blockSize_*1, blockSize_*3];
+  let adjx = blockSize_*3;
+  let adjy = blockSize_*3;
+  let adjz = blockSize_*3;
+  if (rot == Math.ceil(rot)) {
+    adjx = adjxlist[rot%4];
+    adjy = blockSize_*3;
+    adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Ring_14(x,y,z,rot) {
+  // ring_02_40x40x10
+  // リング／四角の和、直方体４つで構成
+  let sL = blockSize*4, sS = 1; let sL_ = sL/2, sS_ = sS/2; let mrgL = sL_-sS_;
+  let sLadj = sL - sS;
+  let sxyzlist = [[sLadj,    sS, sS],  // 上辺
+                  [   sS, sLadj, sS],  // 右辺
+                  [sLadj,    sS, sS],  // 下辺
+                  [   sS, sLadj, sS]]; // 左辺
+  let pxyzlist = [[  sS_, mrgL, 0],
+                  [ mrgL, -sS_, 0],
+                  [ -sS_,-mrgL, 0],
+                  [-mrgL,  sS_, 0]];
+  let adjxlist = [blockSize_*4, blockSize_*1, blockSize_*4, blockSize_*1];
+  let adjzlist = [blockSize_*1, blockSize_*4, blockSize_*1, blockSize_*4];
+  let adjx = blockSize_*4;
+  let adjy = blockSize_*4;
+  let adjz = blockSize_*4;
+  if (rot == Math.ceil(rot)) {
+    adjx = adjxlist[rot%4];
+    adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function Ring_15(x,y,z,rot) {
+  // ring_02_50x50x10
+  // リング／四角の和、直方体４つで構成
+  let sL = blockSize*5, sS = 1; let sL_ = sL/2, sS_ = sS/2; let mrgL = sL_-sS_;
+  let sLadj = sL - sS;
+  let sxyzlist = [[sLadj,    sS, sS],  // 上辺
+                  [   sS, sLadj, sS],  // 右辺
+                  [sLadj,    sS, sS],  // 下辺
+                  [   sS, sLadj, sS]]; // 左辺
+  let pxyzlist = [[  sS_, mrgL, 0],
+                  [ mrgL, -sS_, 0],
+                  [ -sS_,-mrgL, 0],
+                  [-mrgL,  sS_, 0]];
+  let adjxlist = [blockSize_*5, blockSize_*1, blockSize_*5, blockSize_*1];
+  let adjzlist = [blockSize_*1, blockSize_*5, blockSize_*1, blockSize_*5];
+  let adjx = blockSize_*5;
+  let adjy = blockSize_*5;
+  let adjz = blockSize_*5;
+  if (rot == Math.ceil(rot)) {
+    adjx = adjxlist[rot%4];
+    adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (var ii = 0; ii < pxyzlist.length; ++ii) {
+    var pxx = pxyzlist[ii][0]; var pyy = pxyzlist[ii][1]; var pzz = pxyzlist[ii][2];
+    var sxx = sxyzlist[ii][0]; var syy = sxyzlist[ii][1]; var szz = sxyzlist[ii][2];
+    var sxx_ = sxx/2; var syy_ = syy/2; var szz_ = szz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sxx_, syy_, szz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sxx, syy, szz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function con_st(x,y,z,rot) {
+  // 凹(concave)　直進　水平　10x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |      |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  let blockSize5 = blockSize*5, blockSize5_ = blockSize*2.5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, -conw__, -conw_],   // 右側面
+                  [0, -conw__, +conw_],]; // 左側面
+  let sxyzlist = [[blockSize, cont, conw],  // 底面
+                  [blockSize, conw_, cont],   // 右側面
+                  [blockSize, conw_, cont],]; // 左側面
+  let adjxlist = [blockSize_, blockSize_, blockSize_, blockSize_];
+  let adjzlist = [blockSize_, blockSize_, blockSize_, blockSize_];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function con_st50(x,y,z,rot) {
+  // 凹(concave)　直進　水平　50x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |      |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  let blockSize5 = blockSize*5, blockSize5_ = blockSize*2.5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, -conw__, -conw_],   // 右側面
+                  [0, -conw__, +conw_],]; // 左側面
+  let sxyzlist = [[blockSize5, cont, conw],  // 底面
+                  [blockSize5, conw_, cont],   // 右側面
+                  [blockSize5, conw_, cont],]; // 左側面
+  let adjxlist = [blockSize5_, blockSize_ , blockSize5_, blockSize_];
+  let adjzlist = [blockSize_ , blockSize5_, blockSize_ , blockSize5_];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function con_st100(x,y,z,rot) {
+  // con_st100
+  // 凹(concave)　直進　水平　100x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |      |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  let blockSize10 = blockSize*10, blockSize5 = blockSize*5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, -conw__, -conw_],   // 右側面
+                  [0, -conw__, +conw_],]; // 左側面
+  let sxyzlist = [[blockSize10, cont, conw],  // 底面
+                  [blockSize10, conw_, cont],   // 右側面
+                  [blockSize10, conw_, cont],]; // 左側面
+  let adjxlist = [blockSize5, blockSize_, blockSize5, blockSize_];
+  let adjzlist = [blockSize_, blockSize5, blockSize_, blockSize5];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function con_st_slopeH10L20(x,y,z,rot) {
+  // 凹(concave)　直進　坂　20x10x20
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |      |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  // let blockSize2 = blockSize*2;
+  let blockSize2 = blockSize*2.236;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, -conw__, -conw_],   // 右側面
+                  [0, -conw__, +conw_],]; // 左側面
+  let sxyzlist = [[blockSize2, cont, conw],  // 底面
+                  [blockSize2, conw_, cont],   // 右側面
+                  [blockSize2, conw_, cont],]; // 左側面
+  let ang = Math.atan(1/2);
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  let adjxlist = [blockSize  , blockSize_ , blockSize  , blockSize_];
+  let adjzlist = [blockSize_ , blockSize  , blockSize_ , blockSize ];
+  let adjx = blockSize_;
+  let adjy = blockSize;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    //viRail2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  moCntnrBody.quaternion.copy(quat);
+  if (rot != 0) {
+    let quatrot = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moCntnrBody.quaternion.copy(quatrot.mult(moCntnrBody.quaternion));
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function con_arc20(x,y,z, rot) {
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  let rinn = (blockSize_ - conw_) + blockSize; // 内側の半径
+  let rout = (blockSize_ + conw_) + blockSize; // 外側の半径
+  let ndiv = 10;  // 円弧（９０度）の分割数
+  let xxadj = -blockSize_*3;
+  let zzadj = -blockSize_*3;
+  // let xyzinnLlist = [];
+  // let xyzinnHlist = [];
+  // let xyzoutLlist = [];
+  // let xyzoutHlist = [];
+  let radlist = [];
+  let xyzinnlist = [];
+  let xyzoutlist = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let vrad = i/ndiv*PI_;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let xi = xx*rinn+xxadj;
+      let zi = zz*rinn+zzadj;
+      let xo = xx*rout+xxadj;
+      let zo = zz*rout+zzadj;
+      // let yL = -conw_;
+      // let yH = +conw_;
+      // xyzinnLlist.push([xi, yL, zi]);
+      // xyzinnHlist.push([xi, yH, zi]);
+      // xyzoutLlist.push([xo, yL, zo]);
+      // xyzoutHlist.push([xo, yH, zo]);
+      radlist.push(vrad);
+      xyzinnlist.push([xi, 0, zi]);
+      xyzoutlist.push([xo, 0, zo]);
+  }
+  //　各面を構成する点列の組み合わせ
+  // let xyzlistpair = [[xyzinnLlist, xyzoutLlist],  // 底面
+  //                    [xyzoutLlist, xyzoutHlist],  // 左面
+  //                    [xyzoutHlist, xyzinnHlist],  // 上面
+  //                    [xyzinnHlist, xyzinnLlist],  // 右面
+  //                   ];
+  let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+  // let sy = conw, sy_ = conw_;
+  let sy = conw_, sy_ = conw__;
+  let sz = cont, sz_ = cont_;
+  let adjxlist = [blockSize_*3, blockSize_*3, blockSize_*1, blockSize_*1];
+  let adjzlist = [blockSize_*3, blockSize_*1, blockSize_*1, blockSize_*3];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 側面
+  for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+    let xyzlist = xyzlistpair2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      // let vrad = (radlist[i] + radlist[i+1])/2;
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+      let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2)
+      let sx_ = sx/2;
+      let px = (x1+x2)/2;
+      let pz = (z1+z2)/2;
+      let py = -conw__;
+      let ang = Math.atan((z1-z2)/(x1-x2));
+      // let quat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+      // let quat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      // let quat = quat1.mult(quat2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  // 底面
+  sy = cont, sy_ = cont_;
+  let py = -conw_;
+  for (let i = 0; i < ndiv; ++i) {
+    let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+    let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+    let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+    let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+    let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+    let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+    let sx = xmax-xmin, sz = zmax-zmin;
+    let sx_ = sx/2, sz_ = sz/2;
+    let px = (xmax+xmin)/2;
+    let pz = (zmax+zmin)/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viCntnrMesh.add(viObj2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function tube_st(x,y,z,rot) {
+  // 凹(concave)　直進　水平　10x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  // let blockSize5 = blockSize*5, blockSize5_ = blockSize*2.5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSize, cont, conw],  // 底面
+                  [blockSize, conw, cont],   // 右側面
+                  [blockSize, conw, cont], // 左側面
+                  [blockSize, cont, conw],  // 底面
+                  ];
+  let adjxlist = [blockSize_, blockSize_, blockSize_, blockSize_];
+  let adjzlist = [blockSize_, blockSize_, blockSize_, blockSize_];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function tube_st20(x,y,z,rot) {
+  // 凹(concave)　直進　水平　20x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  let blockSizeS = blockSize*2, blockSizeS_ = blockSizeS/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                  [blockSizeS, conw, cont],   // 右側面
+                  [blockSizeS, conw, cont], // 左側面
+                  [blockSizeS, cont, conw],  // 底面
+                  ];
+  let adjxlist = [blockSizeS_, blockSize_ , blockSizeS_, blockSize_ ];
+  let adjzlist = [blockSize_ , blockSizeS_, blockSize_ , blockSizeS_];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st30(x,y,z,rot) {
+  // 凹(concave)　直進　水平　30x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  let blockSizeS = blockSize*3, blockSizeS_ = blockSizeS/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                  [blockSizeS, conw, cont],   // 右側面
+                  [blockSizeS, conw, cont], // 左側面
+                  [blockSizeS, cont, conw],  // 底面
+                  ];
+  let adjxlist = [blockSizeS_, blockSize_ , blockSizeS_, blockSize_ ];
+  let adjzlist = [blockSize_ , blockSizeS_, blockSize_ , blockSizeS_];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st40(x,y,z,rot) {
+  // 凹(concave)　直進　水平　40x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  let blockSizeS = blockSize*4, blockSizeS_ = blockSizeS/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                  [blockSizeS, conw, cont],   // 右側面
+                  [blockSizeS, conw, cont], // 左側面
+                  [blockSizeS, cont, conw],  // 底面
+                  ];
+  let adjxlist = [blockSizeS_, blockSize_ , blockSizeS_, blockSize_ ];
+  let adjzlist = [blockSize_ , blockSizeS_, blockSize_ , blockSizeS_];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st50(x,y,z,rot) {
+  // 凹(concave)　直進　水平　50x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  let blockSize5 = blockSize*5, blockSize5_ = blockSize*2.5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSize5, cont, conw],  // 底面
+                  [blockSize5, conw, cont],   // 右側面
+                  [blockSize5, conw, cont], // 左側面
+                  [blockSize5, cont, conw],  // 底面
+                  ];
+  let adjxlist = [blockSize5_, blockSize_ , blockSize5_, blockSize_ ];
+  let adjzlist = [blockSize_ , blockSize5_, blockSize_ , blockSize5_];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function tube_st100(x,y,z,rot) {
+  // 凹(concave)　直進　水平　100x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  let blockSize10 = blockSize*10, blockSize5 = blockSize*5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSize10, cont, conw],  // 底面
+                  [blockSize10, conw, cont],   // 右側面
+                  [blockSize10, conw, cont], // 左側面
+                  [blockSize10, cont, conw],  // 底面
+                  ];
+  let adjxlist = [blockSize5, blockSize_, blockSize5, blockSize_];
+  let adjzlist = [blockSize_, blockSize5, blockSize_, blockSize5];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st200(x,y,z,rot) {
+  // 凹(concave)　直進　水平　200x10x10
+  //   細い直方体２本で表現
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  let blockSizeS = blockSize*20, blockSizeS_ = blockSizeS/2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                  [blockSizeS, conw, cont],   // 右側面
+                  [blockSizeS, conw, cont], // 左側面
+                  [blockSizeS, cont, conw],  // 底面
+                  ];
+  let adjxlist = [blockSizeS_, blockSize_ , blockSizeS_, blockSize_];
+  let adjzlist = [blockSize_ , blockSizeS_, blockSize_ , blockSizeS_];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function tube_st05_r45(x,y,z,rot) {
+  // 凹(concave)　直進　水平　100x10x10
+  // レール　直線（ななめR45)　100x10x200
+  // [top]
+  //  +------+
+  //  |      |
+  //  |    ／|
+  //  +------+
+  //  |／    |
+  //  |      |
+  //  +------+
+  let blockSizeA = blockSize*0.5*Math.sqrt(2), blockSizeB = blockSize*0.5, blockSizeC = blockSize*0.5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeA, cont, conw],  // 底面
+                  [blockSizeA, conw, cont],   // 右側面
+                  [blockSizeA, conw, cont], // 左側面
+                  [blockSizeA, cont, conw],  // 底面
+                  ];
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), PI_/2);
+  let adjxlist = [blockSizeB, blockSizeC, blockSizeB, blockSizeC];
+  let adjzlist = [blockSizeC, blockSizeB, blockSizeC, blockSizeB];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.quaternion.copy(quat);
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (rot+0.5)*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st10_r45(x,y,z,rot) {
+  // 凹(concave)　直進　水平　100x10x10
+  // レール　直線（ななめR45)　100x10x200
+  // [top]
+  //  +------+
+  //  |      |
+  //  |    ／|
+  //  +------+
+  //  |／    |
+  //  |      |
+  //  +------+
+  let blockSizeA = blockSize*Math.sqrt(2), blockSizeB = blockSize*0.5, blockSizeC = blockSize*1;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeA, cont, conw],  // 底面
+                  [blockSizeA, conw, cont],   // 右側面
+                  [blockSizeA, conw, cont], // 左側面
+                  [blockSizeA, cont, conw],  // 底面
+                  ];
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), PI_/2);
+  let adjxlist = [blockSizeB, blockSizeC, blockSizeB, blockSizeC];
+  let adjzlist = [blockSizeC, blockSizeB, blockSizeC, blockSizeB];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.quaternion.copy(quat);
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (rot+0.5)*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function tube_st10_r45_r(x,y,z,rot) {
+  // 凹(concave)　直進　水平　100x10x10
+  // レール　直線（ななめR45)　100x10x200
+  // [top]
+  //  +-----+-----+
+  //  |     |／   |
+  //  |   ／|     |
+  //  +-----+-----+
+  let blockSizeA = blockSize*Math.sqrt(2), blockSizeB = blockSize*1, blockSizeC = blockSize*0.5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeA, cont, conw],  // 底面
+                  [blockSizeA, conw, cont],   // 右側面
+                  [blockSizeA, conw, cont], // 左側面
+                  [blockSizeA, cont, conw],  // 底面
+                  ];
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), PI_/2);
+  let adjxlist = [blockSizeB, blockSizeC, blockSizeB, blockSizeC];
+  let adjzlist = [blockSizeC, blockSizeB, blockSizeC, blockSizeB];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.quaternion.copy(quat);
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (rot+0.5)*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st50_r45(x,y,z,rot) {
+  // 凹(concave)　直進　水平　100x10x10
+  // レール　直線（ななめR45)　100x10x200
+  // [top]
+  //  +------+
+  //  |      |
+  //  |    ／|
+  //  +------+
+  //  |／    |
+  //  |      |
+  //  +------+
+  let blockSizeA = blockSize*5*Math.sqrt(2), blockSizeB = blockSize*2.5, blockSizeC = blockSize*3;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeA, cont, conw],  // 底面
+                  [blockSizeA, conw, cont],   // 右側面
+                  [blockSizeA, conw, cont], // 左側面
+                  [blockSizeA, cont, conw],  // 底面
+                  ];
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), PI_/2);
+  let adjxlist = [blockSizeB, blockSizeC, blockSizeB, blockSizeC];
+  let adjzlist = [blockSizeC, blockSizeB, blockSizeC, blockSizeB];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.quaternion.copy(quat);
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (rot+0.5)*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function tube_st50_r45_r(x,y,z,rot) {
+  // 凹(concave)　直進　水平　100x10x10
+  // レール　直線（ななめR45)　100x10x200
+  // [top]
+  //  +-----+-----+
+  //  |     |／   |
+  //  |   ／|     |
+  //  +-----+-----+
+  let blockSizeA = blockSize*5*Math.sqrt(2), blockSizeB = blockSize*3, blockSizeC = blockSize*2.5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+//  let px = 0; let py = 0; let pz = 0;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeA, cont, conw],  // 底面
+                  [blockSizeA, conw, cont],   // 右側面
+                  [blockSizeA, conw, cont], // 左側面
+                  [blockSizeA, cont, conw],  // 底面
+                  ];
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), PI_/2);
+  let adjxlist = [blockSizeB, blockSizeC, blockSizeB, blockSizeC];
+  let adjzlist = [blockSizeC, blockSizeB, blockSizeC, blockSizeB];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.quaternion.copy(quat);
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (rot+0.5)*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st100_r45(x,y,z,rot) {
+  // 凹(concave)　直進　水平　100x10x10
+  // レール　直線（ななめR45)　100x10x200
+  // [top]
+  //  +------+
+  //  |      |
+  //  |    ／|
+  //  +------+
+  //  |／    |
+  //  |      |
+  //  +------+
+  let blockSizeA = blockSize*10*Math.sqrt(2), blockSizeB = blockSize*5, blockSizeC = blockSize*5.5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeA, cont, conw],  // 底面
+                  [blockSizeA, conw, cont],   // 右側面
+                  [blockSizeA, conw, cont], // 左側面
+                  [blockSizeA, cont, conw],  // 底面
+                  ];
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), PI_/2);
+  let adjxlist = [blockSizeB, blockSizeC, blockSizeB, blockSizeC];
+  let adjzlist = [blockSizeC, blockSizeB, blockSizeC, blockSizeB];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.quaternion.copy(quat);
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (rot+0.5)*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function tube_st100_r45_r(x,y,z,rot) {
+  // 凹(concave)　直進　水平　100x10x10
+  // レール　直線（ななめR45)　100x10x200
+  // [top]
+  //  +-----+-----+
+  //  |     |／   |
+  //  |   ／|     |
+  //  +-----+-----+
+  let blockSizeA = blockSize*10*Math.sqrt(2), blockSizeB = blockSize*5.5, blockSizeC = blockSize*5;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_, 0],  // 上面
+                  ];
+  let sxyzlist = [[blockSizeA, cont, conw],  // 底面
+                  [blockSizeA, conw, cont],   // 右側面
+                  [blockSizeA, conw, cont], // 左側面
+                  [blockSizeA, cont, conw],  // 底面
+                  ];
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), PI_/2);
+  let adjxlist = [blockSizeB, blockSizeC, blockSizeB, blockSizeC];
+  let adjzlist = [blockSizeC, blockSizeB, blockSizeC, blockSizeB];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz));
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.quaternion.copy(quat);
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (rot+0.5)*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slashL20W10(x,y,z,rot) {
+  // 凹(concave)　直進　ななめ　20x20x10
+  // [top]
+  //  +------+------+
+  //  |        __-- |
+  //  |    __-- __--|
+  //  + _-- __--    +
+  //  |-__--        |
+  //  |-            |
+  //  +------+------+
+  //  +------+------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  // let blockSize2 = blockSize*2;
+  let sqrt5 = Math.sqrt(5);
+  let blockSizeS = blockSize*sqrt5;
+  let adjw = 1.15;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, +conw_*adjw],   // 右側面
+                  [0, 0, -conw_*adjw], // 左側面
+                  [0, +conw_, 0],];  // 上面
+  let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                  [blockSizeS, conw, cont],   // 右側面
+                  [blockSizeS, conw, cont], // 左側面
+                  [blockSizeS, cont, conw],];  // 上面
+  let ang = Math.atan(-1/2);
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), ang);
+  let blockSizeA = blockSize, blockSizeB = blockSize;
+  let adjxlist = [blockSizeA, blockSizeB, blockSizeA, blockSizeB];
+  let adjzlist = [blockSizeB, blockSizeA, blockSizeB, blockSizeA];
+  let adjx = blockSizeA;
+  let adjy = blockSize_;
+  let adjz = blockSizeA;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz), quat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+//  moCntnrBody.quaternion.copy(quat);
+  if (rot != 0) {
+    let quatrot = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moCntnrBody.quaternion.copy(quatrot.mult(moCntnrBody.quaternion));
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slashL20W10_r(x,y,z,rot) {
+  // 凹(concave)　直進　ななめ　20x20x10
+  // [top]
+  //  +------+------+
+  //  |-__          |
+  //  |-_ --__      |
+  //  +  --__ --__  +
+  //  |      --__ --|
+  //  |          --_|
+  //  +------+------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  // let blockSize2 = blockSize*2;
+  let sqrt5 = Math.sqrt(5);
+  let blockSizeS = blockSize*sqrt5;
+  let adjw = 1.15;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, +conw_*adjw],   // 右側面
+                  [0, 0, -conw_*adjw], // 左側面
+                  [0, +conw_, 0],];  // 上面
+  let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                  [blockSizeS, conw, cont],   // 右側面
+                  [blockSizeS, conw, cont], // 左側面
+                  [blockSizeS, cont, conw],];  // 上面
+  let ang = Math.atan(1/2);
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), ang);
+  let blockSizeA = blockSize, blockSizeB = blockSize;
+  let adjxlist = [blockSizeA, blockSizeB, blockSizeA, blockSizeB];
+  let adjzlist = [blockSizeB, blockSizeA, blockSizeB, blockSizeA];
+  let adjx = blockSizeA;
+  let adjy = blockSize_;
+  let adjz = blockSizeA;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz), quat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+//  moCntnrBody.quaternion.copy(quat);
+  if (rot != 0) {
+    let quatrot = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moCntnrBody.quaternion.copy(quatrot.mult(moCntnrBody.quaternion));
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function tube_st_slashL30W10(x,y,z,rot) {
+  // 凹(concave)　直進　ななめ　30x20x10
+  // [top]
+  //  +------+------+
+  //  |        __-- |
+  //  |    __-- __--|
+  //  + _-- __--    +
+  //  |-__--        |
+  //  |-            |
+  //  +------+------+
+  //  +------+------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  // let blockSize2 = blockSize*2;
+  let sqrt10 = Math.sqrt(10);
+  let blockSizeS = blockSize*sqrt10;
+  let adjw = 1.10;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, +conw_*adjw],   // 右側面
+                  [0, 0, -conw_*adjw], // 左側面
+                  [0, +conw_, 0],];  // 上面
+  let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                  [blockSizeS, conw, cont],   // 右側面
+                  [blockSizeS, conw, cont], // 左側面
+                  [blockSizeS, cont, conw],];  // 上面
+  let ang = Math.atan(-1/3);
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), ang);
+  let blockSizeA = blockSize*1.5, blockSizeB = blockSize;
+  let adjxlist = [blockSizeA, blockSizeB, blockSizeA, blockSizeB];
+  let adjzlist = [blockSizeB, blockSizeA, blockSizeB, blockSizeA];
+  let adjx = blockSizeA;
+  let adjy = blockSize_;
+  let adjz = blockSizeA;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz), quat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+//  moCntnrBody.quaternion.copy(quat);
+  if (rot != 0) {
+    let quatrot = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moCntnrBody.quaternion.copy(quatrot.mult(moCntnrBody.quaternion));
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slashL30W10_r(x,y,z,rot) {
+  // 凹(concave)　直進　ななめ　30x20x10
+  // [top]
+  //  +------+------+
+  //  |-__          |
+  //  |-_ --__      |
+  //  +  --__ --__  +
+  //  |      --__ --|
+  //  |          --_|
+  //  +------+------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  // let blockSize2 = blockSize*2;
+  let sqrt10 = Math.sqrt(10);
+  let blockSizeS = blockSize*sqrt10;
+  let adjw = 1.10;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, +conw_*adjw],   // 右側面
+                  [0, 0, -conw_*adjw], // 左側面
+                  [0, +conw_, 0],];  // 上面
+  let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                  [blockSizeS, conw, cont],   // 右側面
+                  [blockSizeS, conw, cont], // 左側面
+                  [blockSizeS, cont, conw],];  // 上面
+  let ang = Math.atan(1/3);
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), ang);
+  let blockSizeA = blockSize*1.5, blockSizeB = blockSize;
+  let adjxlist = [blockSizeA, blockSizeB, blockSizeA, blockSizeB];
+  let adjzlist = [blockSizeB, blockSizeA, blockSizeB, blockSizeA];
+  let adjx = blockSizeA;
+  let adjy = blockSize_;
+  let adjz = blockSizeA;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz), quat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+//  moCntnrBody.quaternion.copy(quat);
+  if (rot != 0) {
+    let quatrot = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moCntnrBody.quaternion.copy(quatrot.mult(moCntnrBody.quaternion));
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slopeH03L20(x,y,z,rot) {
+  // 凹(concave)　直進　坂　20x13x10
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  // let blockSize2 = blockSize*2;
+  let blockSize2 = blockSize*2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+//  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_+cont, 0],];  // 上面
+  let sxyzlist = [[blockSize2, cont, conw],  // 底面
+                  [blockSize2, conw, cont],   // 右側面
+                  [blockSize2, conw, cont], // 左側面
+                  [blockSize2, cont, conw],];  // 上面
+  let ang = Math.atan(3/20);
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  let adjxlist = [blockSize  , blockSize_ , blockSize  , blockSize_];
+  let adjzlist = [blockSize_ , blockSize  , blockSize_ , blockSize ];
+  let adjx = blockSize_;
+  let adjy = blockSize_*1.5;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz), quat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+//  moCntnrBody.quaternion.copy(quat);
+  if (rot != 0) {
+    let quatrot = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moCntnrBody.quaternion.copy(quatrot.mult(moCntnrBody.quaternion));
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slopeH05L20(x,y,z,rot) {
+  // 凹(concave)　直進　坂　20x15x10
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  // let blockSize2 = blockSize*2;
+  let blockSize2 = blockSize*2;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_+cont, 0],];  // 上面
+  let sxyzlist = [[blockSize2, cont, conw],  // 底面
+                  [blockSize2, conw, cont],   // 右側面
+                  [blockSize2, conw, cont], // 左側面
+                  [blockSize2, cont, conw],];  // 上面
+  let ang = Math.atan(5/20);
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  let adjxlist = [blockSize  , blockSize_ , blockSize  , blockSize_];
+  let adjzlist = [blockSize_ , blockSize  , blockSize_ , blockSize ];
+  let adjx = blockSize_;
+  let adjy = blockSize_*1.5;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz), quat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+//  moCntnrBody.quaternion.copy(quat);
+  if (rot != 0) {
+    let quatrot = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moCntnrBody.quaternion.copy(quatrot.mult(moCntnrBody.quaternion));
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slopeH10L20(x,y,z,rot) {
+  // 凹(concave)　直進　坂　20x20x10
+  // [top]
+  //  +------+
+  //  |------|
+  //  |------|
+  //  +------+
+  // [side]     [front]
+  //  +------+  +------+
+  //  |＿＿__|  |  __  |
+  //  |______|  | |__| |
+  //  +------+  +------+
+  // let blockSize2 = blockSize*2;
+  let blockSize2 = blockSize*2.23;
+  // 原点を部品の中心位置としたときのレール位置の中心
+  let px = 0; let py = 0; let pz = railIntr_; // railIntr/2;
+  let pxyzlist = [[0, -conw_, 0],  // 底面
+                  [0, 0, -conw_],   // 右側面
+                  [0, 0, +conw_], // 左側面
+                  [0, +conw_+cont, 0],];  // 上面
+  let sxyzlist = [[blockSize2, cont, conw],  // 底面
+                  [blockSize2, conw, cont],   // 右側面
+                  [blockSize2, conw, cont], // 左側面
+                  [blockSize2, cont, conw],];  // 上面
+  let ang = Math.atan(1/2);
+  let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+  let adjxlist = [blockSize  , blockSize_ , blockSize  , blockSize_];
+  let adjzlist = [blockSize_ , blockSize  , blockSize_ , blockSize ];
+  let adjx = blockSize_;
+  let adjy = blockSize;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  for (let ii = 0; ii < pxyzlist.length; ++ii) {
+    let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+    let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+    let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+    moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                         new CANNON.Vec3(pxx, pyy, pzz), quat);
+    const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+    const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+    const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+    viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+    viRail2Mesh.quaternion.copy(quat);
+    viCntnrMesh.add(viRail2Mesh);
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+//  moCntnrBody.quaternion.copy(quat);
+  if (rot != 0) {
+    let quatrot = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+    moCntnrBody.quaternion.copy(quatrot.mult(moCntnrBody.quaternion));
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slopeArcH03L20(x, y, z, rot) {
+  let dx = 20; let dy = 3; let dx_ = dx/2; let dy_ = dy/2;
+  let ndiv = 20;
+  let vradstep = Math.PI / ndiv;
+  let xyzlistL = [];
+  let xyzlistH = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let x = i/ndiv*dx - dx_;
+      // let vrad = i/ndiv*Math.PI - PI_;
+      let vrad = i*vradstep - PI_;
+      let yL = Math.sin(vrad)*dy_ - conw_;
+      let yH = Math.sin(vrad)*dy_ + conw_ + Math.cos(vrad)*0.8;
+      xyzlistL.push([x, yL, 0]);
+      xyzlistH.push([x, yH, 0]);
+  }
+  let blockSize1 = blockSize*1;
+  let adjxlist = [blockSize1, blockSize_, blockSize1, blockSize_];
+  let adjzlist = [blockSize_, blockSize1, blockSize_, blockSize1];
+  let adjx = blockSize_;
+  let adjy = blockSize_ + dy/2;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 底面・上面
+  let xyzlist2 = [xyzlistL, xyzlistH];
+  for (let ii = 0; ii < xyzlist2.length; ++ii) {
+    let xyzlist = xyzlist2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let xx1 = p1[0], yy1 = p1[1];
+      let xx2 = p2[0], yy2 = p2[1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      let sy = cont, sz = conw;
+      let sy_ = cont_, sz_ = conw_;
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = 0;
+      let ang = Math.atan((yy1-yy2)/(xx1-xx2));
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      // let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viRail2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  // 側面
+  let pzlist = [conw_, -conw_];
+  for (let ii = 0; ii < pzlist.length; ++ii) {
+    let pz = pzlist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pL1 = xyzlistL[i], pL2 = xyzlistL[i+1];
+      let pH1 = xyzlistH[i], pH2 = xyzlistH[i+1];
+      let sx = pL2[0] - pL1[0], sx_ = sx/2;
+      let sy = pH1[1] - pL1[1], sy_ = sy/2;
+      let sz = cont, sz_ = cont_;
+      let px = (pL2[0]+pL1[0])/2;
+      let py = (pH1[1]+pL1[1])/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.01});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slopeArcH05L20(x, y, z, rot) {
+  let dx = 20; let dy = 5; let dx_ = dx/2; let dy_ = dy/2;
+  let ndiv = 20;
+  let vradstep = Math.PI / ndiv;
+  let xyzlistL = [];
+  let xyzlistH = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let x = i/ndiv*dx - dx_;
+      // let vrad = i/ndiv*Math.PI - PI_;
+      let vrad = i*vradstep - PI_;
+      let yL = Math.sin(vrad)*dy_ - conw_;
+      let yH = Math.sin(vrad)*dy_ + conw_ + Math.cos(vrad)*1;
+      xyzlistL.push([x, yL, 0]);
+      xyzlistH.push([x, yH, 0]);
+  }
+  let blockSize1 = blockSize*1;
+  let adjxlist = [blockSize1, blockSize_, blockSize1, blockSize_];
+  let adjzlist = [blockSize_, blockSize1, blockSize_, blockSize1];
+  let adjx = blockSize_;
+  let adjy = blockSize_ + dy/2;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 底面・上面
+  let xyzlist2 = [xyzlistL, xyzlistH];
+  for (let ii = 0; ii < xyzlist2.length; ++ii) {
+    let xyzlist = xyzlist2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let xx1 = p1[0], yy1 = p1[1];
+      let xx2 = p2[0], yy2 = p2[1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      let sy = cont, sz = conw;
+      let sy_ = cont_, sz_ = conw_;
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = 0;
+      let ang = Math.atan((yy1-yy2)/(xx1-xx2));
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      // let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viRail2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  // 側面
+  let pzlist = [conw_, -conw_];
+  for (let ii = 0; ii < pzlist.length; ++ii) {
+    let pz = pzlist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pL1 = xyzlistL[i], pL2 = xyzlistL[i+1];
+      let pH1 = xyzlistH[i], pH2 = xyzlistH[i+1];
+      let sx = pL2[0] - pL1[0], sx_ = sx/2;
+      let sy = pH1[1] - pL1[1], sy_ = sy/2;
+      let sz = cont, sz_ = cont_;
+      let px = (pL2[0]+pL1[0])/2;
+      let py = (pH1[1]+pL1[1])/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.01});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slopeArcH10L20(x, y, z, rot) {
+  let dx = 20; let dy = 10; let dx_ = dx/2; let dy_ = dy/2;
+  let ndiv = 20;
+  let vradstep = Math.PI / ndiv;
+  let xyzlistL = [];
+  let xyzlistH = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let x = i/ndiv*dx - dx_;
+      // let vrad = i/ndiv*Math.PI - PI_;
+      let vrad = i*vradstep - PI_;
+      let yL = Math.sin(vrad)*dy_ - conw_;
+      let yH = Math.sin(vrad)*dy_ + conw_ + Math.cos(vrad)*1;
+      xyzlistL.push([x, yL, 0]);
+      xyzlistH.push([x, yH, 0]);
+  }
+  let blockSize1 = blockSize*1;
+  let adjxlist = [blockSize1, blockSize_, blockSize1, blockSize_];
+  let adjzlist = [blockSize_, blockSize1, blockSize_, blockSize1];
+  let adjx = blockSize_;
+  let adjy = blockSize_ + dy/2;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 底面・上面
+  let xyzlist2 = [xyzlistL, xyzlistH];
+  for (let ii = 0; ii < xyzlist2.length; ++ii) {
+    let xyzlist = xyzlist2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let xx1 = p1[0], yy1 = p1[1];
+      let xx2 = p2[0], yy2 = p2[1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      let sy = cont, sz = conw;
+      let sy_ = cont_, sz_ = conw_;
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = 0;
+      let ang = Math.atan((yy1-yy2)/(xx1-xx2));
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      // let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viRail2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  // 側面
+  let pzlist = [conw_, -conw_];
+  for (let ii = 0; ii < pzlist.length; ++ii) {
+    let pz = pzlist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pL1 = xyzlistL[i], pL2 = xyzlistL[i+1];
+      let pH1 = xyzlistH[i], pH2 = xyzlistH[i+1];
+      let sx = pL2[0] - pL1[0], sx_ = sx/2;
+      let sy = pH1[1] - pL1[1], sy_ = sy/2;
+      let sz = cont, sz_ = cont_;
+      let px = (pL2[0]+pL1[0])/2;
+      let py = (pH1[1]+pL1[1])/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.01});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slopeArcH10L30(x, y, z, rot) {
+  let dx = 30; let dy = 10; let dx_ = dx/2; let dy_ = dy/2;
+  let ndiv = 30;
+  let vradstep = Math.PI / ndiv;
+  let xyzlistL = [];
+  let xyzlistH = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let x = i/ndiv*dx - dx_;
+      // let vrad = i/ndiv*Math.PI - PI_;
+      let vrad = i*vradstep - PI_;
+      let yL = Math.sin(vrad)*dy_ - conw_;
+      let yH = Math.sin(vrad)*dy_ + conw_ + Math.cos(vrad)*0.6;
+      xyzlistL.push([x, yL, 0]);
+      xyzlistH.push([x, yH, 0]);
+  }
+  let blockSize2 = blockSize*1.5;
+  let adjxlist = [blockSize2, blockSize_, blockSize2, blockSize_];
+  let adjzlist = [blockSize_, blockSize2, blockSize_, blockSize2];
+  let adjx = blockSize_;
+  let adjy = blockSize_ + dy/2;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 底面・上面
+  let xyzlist2 = [xyzlistL, xyzlistH];
+  for (let ii = 0; ii < xyzlist2.length; ++ii) {
+    let xyzlist = xyzlist2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let xx1 = p1[0], yy1 = p1[1];
+      let xx2 = p2[0], yy2 = p2[1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      let sy = cont, sz = conw;
+      let sy_ = cont_, sz_ = conw_;
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = 0;
+      let ang = Math.atan((yy1-yy2)/(xx1-xx2));
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      // let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viRail2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  // 側面
+  let pzlist = [conw_, -conw_];
+  for (let ii = 0; ii < pzlist.length; ++ii) {
+    let pz = pzlist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pL1 = xyzlistL[i], pL2 = xyzlistL[i+1];
+      let pH1 = xyzlistH[i], pH2 = xyzlistH[i+1];
+      let sx = pL2[0] - pL1[0], sx_ = sx/2;
+      let sy = pH1[1] - pL1[1], sy_ = sy/2;
+      let sz = cont, sz_ = cont_;
+      let px = (pL2[0]+pL1[0])/2;
+      let py = (pH1[1]+pL1[1])/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.01});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_st_slopeArcH10L50(x, y, z, rot) {
+  let dx = 50; let dy = 10; let dx_ = dx/2; let dy_ = dy/2;
+  let ndiv = 50;
+  let vradstep = Math.PI / ndiv;
+  let xyzlistL = [];
+  let xyzlistH = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let x = i/ndiv*dx - dx_;
+      // let vrad = i/ndiv*Math.PI - PI_;
+      let vrad = i*vradstep - PI_;
+      let yL = Math.sin(vrad)*dy_ - conw_;
+      let yH = Math.sin(vrad)*dy_ + conw_ + Math.cos(vrad)*0.4;
+      xyzlistL.push([x, yL, 0]);
+      xyzlistH.push([x, yH, 0]);
+  }
+  let blockSize2 = blockSize*2.5;
+  let adjxlist = [blockSize2, blockSize_, blockSize2, blockSize_];
+  let adjzlist = [blockSize_, blockSize2, blockSize_, blockSize2];
+  let adjx = blockSize_;
+  let adjy = blockSize_ + dy/2;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 底面・上面
+  let xyzlist2 = [xyzlistL, xyzlistH];
+  for (let ii = 0; ii < xyzlist2.length; ++ii) {
+    let xyzlist = xyzlist2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let xx1 = p1[0], yy1 = p1[1];
+      let xx2 = p2[0], yy2 = p2[1];
+      let sx = Math.sqrt((xx1-xx2)**2 + (yy1-yy2)**2)
+      let sy = cont, sz = conw;
+      let sy_ = cont_, sz_ = conw_;
+      let sx_ = sx/2;
+      let px = (xx1+xx2)/2;
+      let py = (yy1+yy2)/2;
+      let pz = 0;
+      let ang = Math.atan((yy1-yy2)/(xx1-xx2));
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 0, 1), ang);
+      // let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viRail2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  // 側面
+  let pzlist = [conw_, -conw_];
+  for (let ii = 0; ii < pzlist.length; ++ii) {
+    let pz = pzlist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pL1 = xyzlistL[i], pL2 = xyzlistL[i+1];
+      let pH1 = xyzlistH[i], pH2 = xyzlistH[i+1];
+      let sx = pL2[0] - pL1[0], sx_ = sx/2;
+      let sy = pH1[1] - pL1[1], sy_ = sy/2;
+      let sz = cont, sz_ = cont_;
+      let px = (pL2[0]+pL1[0])/2;
+      let py = (pH1[1]+pL1[1])/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.01});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function tube_arc10(x,y,z, rot) {
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  let rinn = (blockSize_ - conw_); // 内側の半径
+  let rout = (blockSize_ + conw_); // 外側の半径
+  let ndiv = 10;  // 円弧（９０度）の分割数
+  let vradstep = PI_/ndiv;
+  let xxadj = -blockSize_, zzadj = -blockSize_;
+  let radlist = [];
+  let xyzinnlist = [], xyzoutlist = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let vrad = i*vradstep;
+      let xx = Math.cos(vrad), zz = Math.sin(vrad);
+      let xi = xx*rinn+xxadj, zi = zz*rinn+zzadj;
+      let xo = xx*rout+xxadj, zo = zz*rout+zzadj;
+      radlist.push(vrad);
+      xyzinnlist.push([xi, 0, zi]);
+      xyzoutlist.push([xo, 0, zo]);
+  }
+  //　各面を構成する点列の組み合わせ
+  let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+  let sy = conw, sy_ = conw_;
+  let sz = cont, sz_ = cont_;
+  let adjxlist = [blockSize_*1, blockSize_*1, blockSize_*1, blockSize_*1];
+  let adjzlist = [blockSize_*1, blockSize_*1, blockSize_*1, blockSize_*1];
+  let adjx = adjxlist[0];
+  let adjy = blockSize_;
+  let adjz = adjzlist[0];
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 側面
+  for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+    let xyzlist = xyzlistpair2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+      let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2);
+      let sx_ = sx/2;
+      let px = (x1+x2)/2;
+      let pz = (z1+z2)/2;
+      let py = 0;
+      let ang = Math.atan((z1-z2)/(x1-x2));
+      // let quat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+      // let quat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      // let quat = quat1.mult(quat2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  // 底面、上面
+  sy = cont, sy_ = cont_;
+  let pylist = [conw_, -conw_];
+  for (let ii = 0; ii < pylist.length; ++ii) {
+    let py = pylist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+      let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+      let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+      let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+      let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+      let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+      let sx = xmax-xmin, sz = zmax-zmin;
+      let sx_ = sx/2, sz_ = sz/2;
+      let px = (xmax+xmin)/2;
+      let pz = (zmax+zmin)/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      let vrad = (radlist[i] + radlist[i+1])/2;
+      sx = conw;
+      sz = Math.sqrt((pi1[0]-pi2[0])**2 + (pi1[2]-pi2[2])**2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -vrad);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_arc20(x,y,z, rot) {
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  let rinn = (blockSize_ - conw_) + blockSize; // 内側の半径
+  let rout = (blockSize_ + conw_) + blockSize; // 外側の半径
+  let ndiv = 10;  // 円弧（９０度）の分割数
+  let vradstep = PI_/ndiv;
+  let xxadj = -blockSize_*3, zzadj = -blockSize_*3;
+  let radlist = [];
+  let xyzinnlist = [], xyzoutlist = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let vrad = i*vradstep;
+      let xx = Math.cos(vrad), zz = Math.sin(vrad);
+      let xi = xx*rinn+xxadj, zi = zz*rinn+zzadj;
+      let xo = xx*rout+xxadj, zo = zz*rout+zzadj;
+      radlist.push(vrad);
+      xyzinnlist.push([xi, 0, zi]);
+      xyzoutlist.push([xo, 0, zo]);
+  }
+  //　各面を構成する点列の組み合わせ
+  let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+  let sy = conw, sy_ = conw_;
+  let sz = cont, sz_ = cont_;
+  let adjxlist = [blockSize_*3, blockSize_*3, blockSize_*1, blockSize_*1];
+  let adjzlist = [blockSize_*3, blockSize_*1, blockSize_*1, blockSize_*3];
+  let adjx = adjxlist[0];
+  let adjy = blockSize_;
+  let adjz = adjzlist[0];
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 側面
+  for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+    let xyzlist = xyzlistpair2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+      let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2);
+      let sx_ = sx/2;
+      let px = (x1+x2)/2;
+      let pz = (z1+z2)/2;
+      let py = 0;
+      let ang = Math.atan((z1-z2)/(x1-x2));
+      // let quat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+      // let quat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      // let quat = quat1.mult(quat2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  // 底面、上面
+  sy = cont, sy_ = cont_;
+  let pylist = [conw_, -conw_];
+  for (let ii = 0; ii < pylist.length; ++ii) {
+    let py = pylist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+      let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+      let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+      let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+      let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+      let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+      let sx = xmax-xmin, sz = zmax-zmin;
+      let sx_ = sx/2, sz_ = sz/2;
+      let px = (xmax+xmin)/2;
+      let pz = (zmax+zmin)/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      let vrad = (radlist[i] + radlist[i+1])/2;
+      sx = conw;
+      sz = Math.sqrt((pi1[0]-pi2[0])**2 + (pi1[2]-pi2[2])**2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -vrad);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_arc30(x,y,z, rot) {
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  let rinn = (blockSize_ - conw_) + blockSize*2; // 内側の半径
+  let rout = (blockSize_ + conw_) + blockSize*2; // 外側の半径
+  let ndiv = 20;  // 円弧（９０度）の分割数
+  let xxadj = -blockSize_*5;
+  let zzadj = -blockSize_*5;
+  let radlist = [];
+  let xyzinnlist = [];
+  let xyzoutlist = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let vrad = i/ndiv*PI_;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let xi = xx*rinn+xxadj;
+      let zi = zz*rinn+zzadj;
+      let xo = xx*rout+xxadj;
+      let zo = zz*rout+zzadj;
+      radlist.push(vrad);
+      xyzinnlist.push([xi, 0, zi]);
+      xyzoutlist.push([xo, 0, zo]);
+  }
+  let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+  // let opalist = [0.4, 0.4, 0.1];
+  let sy = conw, sy_ = conw_;
+  let sz = cont, sz_ = cont_;
+  // let pylist = [0, 0, gardH];
+  let adjxlist = [blockSize_*5, blockSize_*5, blockSize_*1, blockSize_*1];
+  let adjzlist = [blockSize_*5, blockSize_*1, blockSize_*1, blockSize_*5];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 側面
+  for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+    let xyzlist = xyzlistpair2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      // let vrad = (radlist[i] + radlist[i+1])/2;
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+      let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2);
+      let sx_ = sx/2;
+      let px = (x1+x2)/2;
+      let pz = (z1+z2)/2;
+      let py = 0;
+      let ang = Math.atan((z1-z2)/(x1-x2));
+      // let quat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+      // let quat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      // let quat = quat1.mult(quat2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  // 底面、上面
+  sy = cont, sy_ = cont_;
+  let pylist = [conw_, -conw_];
+  for (let ii = 0; ii < pylist.length; ++ii) {
+    let py = pylist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+      let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+      let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+      let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+      let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+      let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+      let sx = xmax-xmin, sz = zmax-zmin;
+      let sx_ = sx/2, sz_ = sz/2;
+      let px = (xmax+xmin)/2;
+      let pz = (zmax+zmin)/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      let vrad = (radlist[i] + radlist[i+1])/2;
+      sx = conw;
+      sz = Math.sqrt((pi1[0]-pi2[0])**2 + (pi1[2]-pi2[2])**2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -vrad);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_arc40(x,y,z, rot) {
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  let rinn = (blockSize_ - conw_) + blockSize*3; // 内側の半径
+  let rout = (blockSize_ + conw_) + blockSize*3; // 外側の半径
+  let ndiv = 30;  // 円弧（９０度）の分割数
+  let xxadj = -blockSize_*7;
+  let zzadj = -blockSize_*7;
+  let radlist = [];
+  let xyzinnlist = [];
+  let xyzoutlist = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let vrad = i/ndiv*PI_;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let xi = xx*rinn+xxadj;
+      let zi = zz*rinn+zzadj;
+      let xo = xx*rout+xxadj;
+      let zo = zz*rout+zzadj;
+      radlist.push(vrad);
+      xyzinnlist.push([xi, 0, zi]);
+      xyzoutlist.push([xo, 0, zo]);
+  }
+  let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+  // let opalist = [0.4, 0.4, 0.1];
+  let sy = conw, sy_ = conw_;
+  let sz = cont, sz_ = cont_;
+  // let pylist = [0, 0, gardH];
+  let adjxlist = [blockSize_*7, blockSize_*7, blockSize_*1, blockSize_*1];
+  let adjzlist = [blockSize_*7, blockSize_*1, blockSize_*1, blockSize_*7];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 側面
+  for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+    let xyzlist = xyzlistpair2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      // let vrad = (radlist[i] + radlist[i+1])/2;
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+      let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2);
+      let sx_ = sx/2;
+      let px = (x1+x2)/2;
+      let pz = (z1+z2)/2;
+      let py = 0;
+      let ang = Math.atan((z1-z2)/(x1-x2));
+      // let quat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+      // let quat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      // let quat = quat1.mult(quat2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  // 底面、上面
+  sy = cont, sy_ = cont_;
+  let pylist = [conw_, -conw_];
+  for (let ii = 0; ii < pylist.length; ++ii) {
+    let py = pylist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+      let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+      let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+      let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+      let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+      let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+      let sx = xmax-xmin, sz = zmax-zmin;
+      let sx_ = sx/2, sz_ = sz/2;
+      let px = (xmax+xmin)/2;
+      let pz = (zmax+zmin)/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      let vrad = (radlist[i] + radlist[i+1])/2;
+      sx = conw;
+      sz = Math.sqrt((pi1[0]-pi2[0])**2 + (pi1[2]-pi2[2])**2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -vrad);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_arc50(x,y,z, rot) {
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  let rinn = (blockSize_ - conw_) + blockSize*4; // 内側の半径
+  let rout = (blockSize_ + conw_) + blockSize*4; // 外側の半径
+  let ndiv = 40;  // 円弧（９０度）の分割数
+  let xxadj = -blockSize_*9;
+  let zzadj = -blockSize_*9;
+  let radlist = [];
+  let xyzinnlist = [];
+  let xyzoutlist = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let vrad = i/ndiv*PI_;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let xi = xx*rinn+xxadj;
+      let zi = zz*rinn+zzadj;
+      let xo = xx*rout+xxadj;
+      let zo = zz*rout+zzadj;
+      radlist.push(vrad);
+      xyzinnlist.push([xi, 0, zi]);
+      xyzoutlist.push([xo, 0, zo]);
+  }
+  let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+  // let opalist = [0.4, 0.4, 0.1];
+  let sy = conw, sy_ = conw_;
+  let sz = cont, sz_ = cont_;
+  // let pylist = [0, 0, gardH];
+  let adjxlist = [blockSize_*9, blockSize_*9, blockSize_*1, blockSize_*1];
+  let adjzlist = [blockSize_*9, blockSize_*1, blockSize_*1, blockSize_*9];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 側面
+  for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+    let xyzlist = xyzlistpair2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      // let vrad = (radlist[i] + radlist[i+1])/2;
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+      let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2);
+      let sx_ = sx/2;
+      let px = (x1+x2)/2;
+      let pz = (z1+z2)/2;
+      let py = 0;
+      let ang = Math.atan((z1-z2)/(x1-x2));
+      // let quat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+      // let quat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      // let quat = quat1.mult(quat2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  // 底面、上面
+  sy = cont, sy_ = cont_;
+  let pylist = [conw_, -conw_];
+  for (let ii = 0; ii < pylist.length; ++ii) {
+    let py = pylist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+      let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+      let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+      let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+      let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+      let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+      let sx = xmax-xmin, sz = zmax-zmin;
+      let sx_ = sx/2, sz_ = sz/2;
+      let px = (xmax+xmin)/2;
+      let pz = (zmax+zmin)/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      let vrad = (radlist[i] + radlist[i+1])/2;
+      sx = conw;
+      sz = Math.sqrt((pi1[0]-pi2[0])**2 + (pi1[2]-pi2[2])**2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -vrad);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_arc60(x,y,z, rot) {
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  let rinn = (blockSize_ - conw_) + blockSize*5; // 内側の半径
+  let rout = (blockSize_ + conw_) + blockSize*5; // 外側の半径
+  let ndiv = 50;  // 円弧（９０度）の分割数
+  let xxadj = -blockSize_*11;
+  let zzadj = -blockSize_*11;
+  let radlist = [];
+  let xyzinnlist = [];
+  let xyzoutlist = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let vrad = i/ndiv*PI_;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let xi = xx*rinn+xxadj;
+      let zi = zz*rinn+zzadj;
+      let xo = xx*rout+xxadj;
+      let zo = zz*rout+zzadj;
+      radlist.push(vrad);
+      xyzinnlist.push([xi, 0, zi]);
+      xyzoutlist.push([xo, 0, zo]);
+  }
+  let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+  // let opalist = [0.4, 0.4, 0.1];
+  let sy = conw, sy_ = conw_;
+  let sz = cont, sz_ = cont_;
+  // let pylist = [0, 0, gardH];
+  let adjxlist = [blockSize_*11, blockSize_*11, blockSize_*1, blockSize_*1];
+  let adjzlist = [blockSize_*11, blockSize_*1 , blockSize_*1, blockSize_*11];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 側面
+  for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+    let xyzlist = xyzlistpair2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      // let vrad = (radlist[i] + radlist[i+1])/2;
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+      let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2);
+      let sx_ = sx/2;
+      let px = (x1+x2)/2;
+      let pz = (z1+z2)/2;
+      let py = 0;
+      let ang = Math.atan((z1-z2)/(x1-x2));
+      // let quat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+      // let quat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      // let quat = quat1.mult(quat2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  // 底面、上面
+  sy = cont, sy_ = cont_;
+  let pylist = [conw_, -conw_];
+  for (let ii = 0; ii < pylist.length; ++ii) {
+    let py = pylist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+      let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+      let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+      let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+      let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+      let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+      let sx = xmax-xmin, sz = zmax-zmin;
+      let sx_ = sx/2, sz_ = sz/2;
+      let px = (xmax+xmin)/2;
+      let pz = (zmax+zmin)/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      let vrad = (radlist[i] + radlist[i+1])/2;
+      sx = conw;
+      sz = Math.sqrt((pi1[0]-pi2[0])**2 + (pi1[2]-pi2[2])**2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -vrad);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_arc90(x,y,z, rot) {
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  let rinn = (blockSize_ - conw_) + blockSize*8; // 内側の半径
+  let rout = (blockSize_ + conw_) + blockSize*8; // 外側の半径
+  let ndiv = 80;  // 円弧（９０度）の分割数
+  let xxadj = -blockSize_*17;
+  let zzadj = -blockSize_*17;
+  let radlist = [];
+  let xyzinnlist = [];
+  let xyzoutlist = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let vrad = i/ndiv*PI_;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let xi = xx*rinn+xxadj;
+      let zi = zz*rinn+zzadj;
+      let xo = xx*rout+xxadj;
+      let zo = zz*rout+zzadj;
+      radlist.push(vrad);
+      xyzinnlist.push([xi, 0, zi]);
+      xyzoutlist.push([xo, 0, zo]);
+  }
+  let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+  let sy = conw, sy_ = conw_;
+  let sz = cont, sz_ = cont_;
+  let adjxlist = [blockSize_*17, blockSize_*17, blockSize_*1, blockSize_*1];
+  let adjzlist = [blockSize_*17, blockSize_*1 , blockSize_*1, blockSize_*17];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 側面
+  for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+    let xyzlist = xyzlistpair2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+      let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2);
+      let sx_ = sx/2;
+      let px = (x1+x2)/2;
+      let pz = (z1+z2)/2;
+      let py = 0;
+      let ang = Math.atan((z1-z2)/(x1-x2));
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  // 底面、上面
+  sy = cont, sy_ = cont_;
+  let pylist = [conw_, -conw_];
+  for (let ii = 0; ii < pylist.length; ++ii) {
+    let py = pylist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+      let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+      let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+      let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+      let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+      let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+      let sx = xmax-xmin, sz = zmax-zmin;
+      let sx_ = sx/2, sz_ = sz/2;
+      let px = (xmax+xmin)/2;
+      let pz = (zmax+zmin)/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      let vrad = (radlist[i] + radlist[i+1])/2;
+      sx = conw;
+      sz = Math.sqrt((pi1[0]-pi2[0])**2 + (pi1[2]-pi2[2])**2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -vrad);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_arc100(x,y,z, rot) {
+  // [top]
+  //  +------+------+
+  //  |      :   +++|
+  //  |      +++++++|
+  //  +- - +++ - - -+
+  //  |   ++ :      |
+  //  |  ++  :      |
+  //  +------+------+
+  let rinn = (blockSize_ - conw_) + blockSize*9; // 内側の半径
+  let rout = (blockSize_ + conw_) + blockSize*9; // 外側の半径
+  let ndiv = 90;  // 円弧（９０度）の分割数
+  let xxadj = -blockSize_*19;
+  let zzadj = -blockSize_*19;
+  let radlist = [];
+  let xyzinnlist = [];
+  let xyzoutlist = [];
+  for (let i = 0; i < ndiv+1; ++i) {
+      let vrad = i/ndiv*PI_;
+      let xx = Math.cos(vrad);
+      let zz = Math.sin(vrad);
+      let xi = xx*rinn+xxadj;
+      let zi = zz*rinn+zzadj;
+      let xo = xx*rout+xxadj;
+      let zo = zz*rout+zzadj;
+      radlist.push(vrad);
+      xyzinnlist.push([xi, 0, zi]);
+      xyzoutlist.push([xo, 0, zo]);
+  }
+  let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+  // let opalist = [0.4, 0.4, 0.1];
+  let sy = conw, sy_ = conw_;
+  let sz = cont, sz_ = cont_;
+  // let pylist = [0, 0, gardH];
+  let adjxlist = [blockSize_*19, blockSize_*19, blockSize_*1, blockSize_*1];
+  let adjzlist = [blockSize_*19, blockSize_*1 , blockSize_*1, blockSize_*19];
+  let adjx = adjxlist[rot%4];
+  let adjy = blockSize_;
+  let adjz = adjzlist[rot%4];
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // 側面
+  for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+    let xyzlist = xyzlistpair2[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      // let vrad = (radlist[i] + radlist[i+1])/2;
+      let p1 = xyzlist[i], p2 = xyzlist[i+1];
+      let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+      let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2);
+      let sx_ = sx/2;
+      let px = (x1+x2)/2;
+      let pz = (z1+z2)/2;
+      let py = 0;
+      let ang = Math.atan((z1-z2)/(x1-x2));
+      // let quat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+      // let quat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      // let quat = quat1.mult(quat2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz),
+                           quat);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  // 底面、上面
+  sy = cont, sy_ = cont_;
+  let pylist = [conw_, -conw_];
+  for (let ii = 0; ii < pylist.length; ++ii) {
+    let py = pylist[ii];
+    for (let i = 0; i < ndiv; ++i) {
+      let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+      let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+      let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+      let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+      let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+      let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+      let sx = xmax-xmin, sz = zmax-zmin;
+      let sx_ = sx/2, sz_ = sz/2;
+      let px = (xmax+xmin)/2;
+      let pz = (zmax+zmin)/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(px, py, pz));
+      let vrad = (radlist[i] + radlist[i+1])/2;
+      sx = conw;
+      sz = Math.sqrt((pi1[0]-pi2[0])**2 + (pi1[2]-pi2[2])**2);
+      let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -vrad);
+      const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+      viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+      viObj2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viObj2Mesh);
+    }
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+
+export function tube_arc20_r45(x,y,z, rot) {
+  // rail_arc_R45
+  // レール　水平（直線＋ななめR45)　20x10x20
+  //  [top]
+  //  +-----+-----+
+  //  |     |＿＿ |
+  //  |   ／|     |
+  //  +-----+-----+
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // ----------------------------------------
+  // 直線部分
+  {
+    let blockSizeS = 4;
+    let px = -blockSizeS/2 + blockSize; let py = 0; let pz = -blockSize*1.5 + blockSize;
+    let sqrt2 = Math.sqrt(2), sqrt2_ = sqrt2/2, vconw = conw_;
+    let pxyzlist = [[px+0, py-conw_, pz+0],     // 底面
+                    [px+0, py-0    , pz-vconw], // 左側面
+                    [px+0, py+0    , pz+vconw], // 右側面
+                    [px+0, py+conw_, pz+0],     // 上面
+                    ];
+    let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                    [blockSizeS, conw, cont],  // 右側面
+                    [blockSizeS, conw, cont],  // 左側面
+                    [blockSizeS, cont, conw],  // 底面
+                    ];
+    // let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), PI_/2);
+    for (let ii = 0; ii < pxyzlist.length; ++ii) {
+      let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+      let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+      let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(pxx, pyy, pzz));
+//                           new CANNON.Vec3(pxx, pyy, pzz), quat);
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+      // viRail2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  // ----------------------------------------
+  // 曲線部分
+  {
+    let rinn = (blockSize_ - conw_) + blockSize; // 内側の半径
+    let rout = (blockSize_ + conw_) + blockSize; // 外側の半径
+    // let arcdiv = 10;  // 円弧（９０度）の分割数
+    // let vradstep = PI_/arcdiv;
+    // let ndiv = 5;  // 円弧の要素数
+    let arcdiv = 20;  // 円弧（９０度）の分割数
+    let vradstep = PI_/arcdiv;
+    let ndiv = 10;  // 円弧の要素数
+    // let xxadj = -blockSize_*3, zzadj = -blockSize_*3;
+    // let xxadj =  blockSize_*3, zzadj = blockSize_*3;
+    let xxadj = -3.82 + blockSize, zzadj = 0 + blockSize;
+    let radlist = [];
+    let xyzinnlist = [], xyzoutlist = [];
+    for (let i = 0; i < ndiv+1; ++i) {
+        let vrad = -i*vradstep + PI_*3;
+        let xx = Math.cos(vrad), zz = Math.sin(vrad);
+        let xi = xx*rinn+xxadj, zi = zz*rinn+zzadj;
+        let xo = xx*rout+xxadj, zo = zz*rout+zzadj;
+        radlist.push(vrad);
+        xyzinnlist.push([xi, 0, zi]);
+        xyzoutlist.push([xo, 0, zo]);
+    }
+    //　各面を構成する点列の組み合わせ
+    let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+    let sy = conw, sy_ = conw_;
+    let sz = cont, sz_ = cont_;
+    // 側面
+    for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+      let xyzlist = xyzlistpair2[ii];
+      for (let i = 0; i < ndiv; ++i) {
+        let p1 = xyzlist[i], p2 = xyzlist[i+1];
+        let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+        let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2);
+        let sx_ = sx/2;
+        let px = (x1+x2)/2;
+        let pz = (z1+z2)/2;
+        let py = 0;
+        let ang = Math.atan((z1-z2)/(x1-x2));
+        // let quat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+        // let quat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+        // let quat = quat1.mult(quat2);
+        let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             quat);
+        const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+        const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+        viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viObj2Mesh.quaternion.copy(quat);
+        viCntnrMesh.add(viObj2Mesh);
+      }
+    }
+    // 底面、上面
+    sy = cont, sy_ = cont_;
+    let pylist = [conw_, -conw_];
+    for (let ii = 0; ii < pylist.length; ++ii) {
+      let py = pylist[ii];
+      for (let i = 0; i < ndiv; ++i) {
+        let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+        let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+        let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+        let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+        let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+        let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+        let sx = xmax-xmin, sz = zmax-zmin;
+        let sx_ = sx/2, sz_ = sz/2;
+        let px = (xmax+xmin)/2;
+        let pz = (zmax+zmin)/2;
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz));
+        let vrad = (radlist[i] + radlist[i+1])/2;
+        sx = conw;
+        sz = Math.sqrt((pi1[0]-pi2[0])**2 + (pi1[2]-pi2[2])**2);
+        let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -vrad);
+        const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+        const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+        viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viObj2Mesh.quaternion.copy(quat);
+        viCntnrMesh.add(viObj2Mesh);
+      }
+    }
+  }
+  // ----------------------------------------
+  // ななめ部分
+  {
+    let blockSizeS = 0.85;
+    let sqrt2 = Math.sqrt(2), sqrt2_ = sqrt2/2, vconw = conw_*sqrt2_;
+    let x = 0.3;
+    let px = -blockSize-5+x + blockSize; let py = 0; let pz = -blockSize-x + blockSize;
+    // let pxyzlist = [[px+0, py-conw_, pz+0],     // 底面
+    //                 [px+0, py+0    , pz-conw_], // 右側面
+    //                 [px+0, py+0    , pz+conw_], // 左側面
+    //                 [px+0, py+conw_, pz+0],     // 上面
+    //                 ];
+    let pxyzlist = [[px+0    , py-conw_, pz+0],     // 底面
+                    [px-vconw, py+0    , pz-vconw], // 左側面
+                    [px+vconw, py+0    , pz+vconw], // 右側面
+                    [px+0    , py+conw_, pz+0],     // 上面
+                    ];
+    let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                    [blockSizeS, conw, cont],  // 右側面
+                    [blockSizeS, conw, cont],  // 左側面
+                    [blockSizeS, cont, conw],  // 底面
+                    ];
+    let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), PI_/2);
+    for (let ii = 0; ii < pxyzlist.length; ++ii) {
+      let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+      let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+      let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(pxx, pyy, pzz), quat);
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+      viRail2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  // --------------------
+  let blockSizeB = blockSize, blockSizeC = blockSize;
+  let adjxlist = [blockSizeB, blockSizeC, blockSizeB, 0];
+  let adjzlist = [blockSizeC, blockSizeB, 0         , blockSizeB];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
+
+export function tube_arc20_r45_r(x,y,z, rot) {
+  // rail_arc_R45
+  // レール　水平（直線＋ななめR45)　20x10x20
+  //  [top]
+  //  +-----+-----+
+  //  | ＿＿|     |
+  //  |     |＼   |
+  //  +-----+-----+
+  const moCntnrBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, 0, 0),
+    material: moRailMtr,
+  });
+  const viCntnrMesh = new THREE.Group();
+  // ----------------------------------------
+  // 直線部分
+  {
+    let blockSizeS = 4;
+    let px = blockSizeS/2-blockSize; let py = 0; let pz = -blockSize*1.5 + blockSize;
+    let sqrt2 = Math.sqrt(2), sqrt2_ = sqrt2/2, vconw = conw_;
+    let pxyzlist = [[px+0, py-conw_, pz+0],     // 底面
+                    [px+0, py-0    , pz-vconw], // 左側面
+                    [px+0, py+0    , pz+vconw], // 右側面
+                    [px+0, py+conw_, pz+0],     // 上面
+                    ];
+    let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                    [blockSizeS, conw, cont],  // 右側面
+                    [blockSizeS, conw, cont],  // 左側面
+                    [blockSizeS, cont, conw],  // 底面
+                    ];
+    for (let ii = 0; ii < pxyzlist.length; ++ii) {
+      let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+      let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+      let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(pxx, pyy, pzz));
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  // ----------------------------------------
+  // 曲線部分
+  {
+    let rinn = (blockSize_ - conw_) + blockSize; // 内側の半径
+    let rout = (blockSize_ + conw_) + blockSize; // 外側の半径
+    // let arcdiv = 10;  // 円弧（９０度）の分割数
+    // let vradstep = PI_/arcdiv;
+    // let ndiv = 5;  // 円弧の要素数
+    let arcdiv = 20;  // 円弧（９０度）の分割数
+    let vradstep = PI_/arcdiv;
+    let ndiv = 10;  // 円弧の要素数
+    // let xxadj = -blockSize_*3, zzadj = -blockSize_*3;
+    // let xxadj =  blockSize_*3, zzadj = blockSize_*3;
+    let xxadj = +3.82 - blockSize, zzadj = 0 + blockSize;
+    let radlist = [];
+    let xyzinnlist = [], xyzoutlist = [];
+    for (let i = 0; i < ndiv+1; ++i) {
+        let vrad = i*vradstep + PI_*3;
+        let xx = Math.cos(vrad), zz = Math.sin(vrad);
+        let xi = xx*rinn+xxadj, zi = zz*rinn+zzadj;
+        let xo = xx*rout+xxadj, zo = zz*rout+zzadj;
+        radlist.push(vrad);
+        xyzinnlist.push([xi, 0, zi]);
+        xyzoutlist.push([xo, 0, zo]);
+    }
+    //　各面を構成する点列の組み合わせ
+    let xyzlistpair2 = [xyzinnlist, xyzoutlist];
+    let sy = conw, sy_ = conw_;
+    let sz = cont, sz_ = cont_;
+    // 側面
+    for (let ii = 0; ii < xyzlistpair2.length; ++ii) {
+      let xyzlist = xyzlistpair2[ii];
+      for (let i = 0; i < ndiv; ++i) {
+        let p1 = xyzlist[i], p2 = xyzlist[i+1];
+        let x1 = p1[0], z1 = p1[2], x2 = p2[0], z2 = p2[2];
+        let sx = Math.sqrt((x1-x2)**2 + (z1-z2)**2);
+        let sx_ = sx/2;
+        let px = (x1+x2)/2;
+        let pz = (z1+z2)/2;
+        let py = 0;
+        let ang = Math.atan((z1-z2)/(x1-x2));
+        // let quat1 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(Math.cos(vrad), 0, Math.sin(vrad)), -0.09);
+        // let quat2 = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+        // let quat = quat1.mult(quat2);
+        let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -ang);
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz),
+                             quat);
+        const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+        const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+        viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viObj2Mesh.quaternion.copy(quat);
+        viCntnrMesh.add(viObj2Mesh);
+      }
+    }
+    // 底面、上面
+    sy = cont, sy_ = cont_;
+    let pylist = [conw_, -conw_];
+    for (let ii = 0; ii < pylist.length; ++ii) {
+      let py = pylist[ii];
+      for (let i = 0; i < ndiv; ++i) {
+        let pi1 = xyzinnlist[i], pi2 = xyzinnlist[i+1];
+        let po1 = xyzoutlist[i], po2 = xyzoutlist[i+1];
+        let xmin = Math.min(pi1[0], pi2[0], po1[0], po2[0]);
+        let xmax = Math.max(pi1[0], pi2[0], po1[0], po2[0]);
+        let zmin = Math.min(pi1[2], pi2[2], po1[2], po2[2]);
+        let zmax = Math.max(pi1[2], pi2[2], po1[2], po2[2]);
+        let sx = xmax-xmin, sz = zmax-zmin;
+        let sx_ = sx/2, sz_ = sz/2;
+        let px = (xmax+xmin)/2;
+        let pz = (zmax+zmin)/2;
+        moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                             new CANNON.Vec3(px, py, pz));
+        let vrad = (radlist[i] + radlist[i+1])/2;
+        sx = conw;
+        sz = Math.sqrt((pi1[0]-pi2[0])**2 + (pi1[2]-pi2[2])**2);
+        let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -vrad);
+        const viObj2Geo = new THREE.BoxGeometry(sx, sy, sz);
+        const viObj2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+        const viObj2Mesh = new THREE.Mesh(viObj2Geo, viObj2Mtr);
+        viObj2Mesh.position.copy(new THREE.Vector3(px, py, pz));
+        viObj2Mesh.quaternion.copy(quat);
+        viCntnrMesh.add(viObj2Mesh);
+      }
+    }
+  }
+  // ----------------------------------------
+  // ななめ部分
+  {
+    let blockSizeS = 0.85;
+    let sqrt2 = Math.sqrt(2), sqrt2_ = sqrt2/2, vconw = conw_*sqrt2_;
+    let x = 0.3;
+    let px = blockSize -blockSize-5-x + blockSize; let py = 0; let pz = -blockSize-x + blockSize;
+    let pxyzlist = [[px+0    , py-conw_, pz+0],     // 底面
+                    [px+vconw, py+0    , pz-vconw], // 左側面
+                    [px-vconw, py+0    , pz+vconw], // 右側面
+                    [px+0    , py+conw_, pz+0],     // 上面
+                    ];
+    let sxyzlist = [[blockSizeS, cont, conw],  // 底面
+                    [blockSizeS, conw, cont],  // 右側面
+                    [blockSizeS, conw, cont],  // 左側面
+                    [blockSizeS, cont, conw],  // 底面
+                    ];
+    let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -PI_/2);
+    for (let ii = 0; ii < pxyzlist.length; ++ii) {
+      let pxx = pxyzlist[ii][0], pyy = pxyzlist[ii][1], pzz = pxyzlist[ii][2];
+      let sx = sxyzlist[ii][0], sy = sxyzlist[ii][1], sz = sxyzlist[ii][2];
+      let sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+      moCntnrBody.addShape(new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                           new CANNON.Vec3(pxx, pyy, pzz), quat);
+      const viRail2Geo = new THREE.BoxGeometry(sx, sy, sz);
+      const viRail2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.1});
+      const viRail2Mesh = new THREE.Mesh(viRail2Geo, viRail2Mtr);
+      viRail2Mesh.position.copy(new THREE.Vector3(pxx, pyy, pzz));
+      viRail2Mesh.quaternion.copy(quat);
+      viCntnrMesh.add(viRail2Mesh);
+    }
+  }
+  // --------------------
+  let blockSizeB = blockSize, blockSizeC = blockSize;
+  let adjxlist = [blockSize, blockSizeC, blockSizeB, 0         ];
+  let adjzlist = [blockSize, blockSizeB, 0         , blockSizeB];
+  let adjx = blockSize_;
+  let adjy = blockSize_;
+  let adjz = blockSize_;
+  if (rot == Math.ceil(rot)) {
+      adjx = adjxlist[rot%4];
+      adjz = adjzlist[rot%4];
+  }
+  moCntnrBody.position = new CANNON.Vec3(x+adjx, y+adjy, z+adjz);
+  if (rot != 0) {
+    moCntnrBody.quaternion = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot*PI_);
+  }
+  viCntnrMesh.position.copy(moCntnrBody.position);
+  viCntnrMesh.quaternion.copy(moCntnrBody.quaternion);
+  world.addBody(moCntnrBody);
+  scene.add(viCntnrMesh);
+}
