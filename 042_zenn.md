@@ -14,7 +14,7 @@
 
 ソース
 
-https://github.com/fnamuoo/webgl/blob/main/040
+https://github.com/fnamuoo/webgl/blob/main/042
 
 動かし方
 
