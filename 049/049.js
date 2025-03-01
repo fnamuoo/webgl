@@ -1,11 +1,10 @@
 // mode:javascript
 
-// 迷路データを使った例
+// 迷路内の移動体試作
 
 import * as THREE from "three";
 import * as CANNON from "cannon";
 import { OrbitControls } from "orbitcontrols";
-import * as vb from "VehicleBase";
 import { Gamepad } from "Gamepad";
 import * as Maze1 from "Maze1";
 import * as Maze2 from "Maze2";
@@ -15,13 +14,24 @@ import * as Maze3 from "Maze3";
 const timeStep = 1 / 45;
 let iniX = 0, iniY = 20, iniZ = 0, iniRotY = 1.25
 
+// 0: 平面
 // 1: Maze1(通路・壁が同じ大きさの迷路) を使った迷路
 // 2: Maze2(通路と薄い壁の迷路) を使った迷路
 // 3: Maze2(通路と薄い壁の迷路) を使った迷路 ＋ Maze3の経路
 // 4: Maze1(通路・壁が同じ大きさの迷路) を使って highfield で表現
 // 5: Maze1(通路・壁が同じ大きさの迷路) を使って highfield で表現（山と谷を逆転）：キャットウォーク
 // 6: Maze2(通路と薄い壁の迷路) を使った迷路 ＋ Maze3の経路＋マイクロマウスのマップ
-let mapType = 5;
+let mapType = 3;
+
+// 1: 座標値で移動：自由位置（補正もしない）
+// 2: 座標値で移動：自由位置 + keyUp時にアジャスト位置に移動させる
+// 3: 座標値で移動：Grid位置にそって移動 + keyUp時にアジャスト位置に移動させる
+// 4: 力で移動・摩擦で停止：自由位置（補正もしない）
+// 5: 力で移動・摩擦で停止：自由位置（keyUp時にアジャスト位置に移動させる）
+// 6: 力で移動・摩擦で停止：自由位置（keyUp時にアジャスト位置1/2に移動させる）
+let keyEventMode = 3;
+
+// --------------------
 
 let map1mapdivIni = 9;
 let map1mapdiv = 9;
@@ -75,13 +85,10 @@ function incrMapPara() {
 
 
 function setupWorld() {
-    const world = new CANNON.World()
-    world.gravity.set(0, -10, 0)
-    // Sweep and prune broadphase
-    world.broadphase = new CANNON.SAPBroadphase(world)
-    // Disable friction by default
-    world.defaultContactMaterial.friction = 0
-
+    const world = new CANNON.World();
+    world.gravity.set(0, -10, 0);
+    world.broadphase = new CANNON.SAPBroadphase(world);
+    world.defaultContactMaterial.friction = 0;  //def = 0.3
     var camera;
     var scene;
     var renderer;
@@ -123,32 +130,89 @@ function setupWorld() {
     return {world, camera, scene, renderer, orbitControls};
 }
 
-var ivehicle = 0;
-
 window.onload = () => {
-    var world, camera, scene, renderer, orbitControls, vehicle;
+    let world, camera, scene, renderer, orbitControls, mobj;
+    let mzdata, mzdata3 = null;
 
     function createWorld() {
         iniX = 0, iniY = 20, iniZ = 0;
+        mzdata = null;
+        mzdata3 = null;
         const {world, camera, scene, renderer, orbitControls} = setupWorld();
         const moGroundMtr = new CANNON.Material({name: 'ground'})
 
-        let vehicle = new vb.VehicleFR01(scene, world, moGroundMtr);
-        vehicle.init();
-        vehicle.moChassisBody_.isVehicle = true;
-        for (let i = 0; i < 3; ++i) {
-            world.step(1/60)
-            vehicle.setPosition(iniX, iniY, iniZ, iniRotY);
-            vehicle.viewUpdate();
+        {
+            let msizexz = 3, msizexz_ = msizexz/2;
+            let msizey = 1.5, msizey_ = msizey/2;
+            let moMobjMtr = new CANNON.Material({name: 'mobj'})
+            let moMobj2Body = new CANNON.Body({
+                mass: 1,
+                shape: new CANNON.Box(new CANNON.Vec3(msizexz_, msizey_, msizexz_)),
+                position: new CANNON.Vec3(0, msizey*2, 0),
+                material: moMobjMtr,
+                linearDamping: 0.9,  // def: 0.01 下記ContactMaterialが効いていないのでこちらで
+                //                 world.defaultContactMaterial.friction を 0 にしているせいかな？
+            });
+            world.addBody(moMobj2Body);
+            const viMobj2Geo = new THREE.BoxGeometry(msizexz, msizey, msizexz);
+            // const viMobj2Mtr = new THREE.MeshNormalMaterial();
+            // const viMobj2Mtr = new THREE.MeshNormalMaterial({wireframe:true});
+            const viMobj2Mtr = new THREE.MeshNormalMaterial({transparent: true, opacity: 0.3});
+            const viMobj2Mesh = new THREE.Mesh(viMobj2Geo, viMobj2Mtr);
+            scene.add(viMobj2Mesh);
+            viMobj2Mesh.position.copy(moMobj2Body.position);
+            viMobj2Mesh.quaternion.copy(moMobj2Body.quaternion);
+            // 描画を自動で更新させるために postStepにイベント追加
+            world.addEventListener('postStep', () => {
+                viMobj2Mesh.position.copy(moMobj2Body.position);
+                viMobj2Mesh.quaternion.copy(moMobj2Body.quaternion);
+            });
+            mobj = moMobj2Body;
+            mobj.isMObj = true;
+            const mobj_ground = new CANNON.ContactMaterial(mobj, moGroundMtr, {
+                friction: 0.9,  // 摩擦係数(def=0.3)
+                restitution: 0.3,  // 反発係数 (def=0.3)
+                contactEquationStiffness: 1e-6,  // 剛性(def=1e7)
+                // frictionEquationStiffness: 1e18,  // def=1e7
+                // frictionEquationRelaxation: 1, // def=3
+                // frictionEquationRegularizationTime: 3,
+            });
+            world.addContactMaterial(mobj_ground);
         }
 
         // ----------------------------------------
         // コース
+        const moMazeMtr = new CANNON.Material({name: 'maze'});
+
+
+        if (mapType == 0) {
+            // 地面代わりのbox
+            const grndw = 100, grndh = 100, grndt = 10;
+            const moGround2Body = new CANNON.Body({
+                mass: 0,
+                shape: new CANNON.Box(new CANNON.Vec3(grndw, grndt, grndh)),
+                position: new CANNON.Vec3(grndw, -grndt, grndh),
+                material: moGroundMtr,
+            });
+            world.addBody(moGround2Body);
+            const viGround2Geo = new THREE.BoxGeometry(grndw*2, grndt*2, grndh*2);
+            const viGround2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.4, color:"#008000"});
+            const viGround2Mesh = new THREE.Mesh(viGround2Geo, viGround2Mtr);
+            scene.add(viGround2Mesh);
+            viGround2Mesh.position.copy(moGround2Body.position);
+            viGround2Mesh.quaternion.copy(moGround2Body.quaternion);
+            // 基準面を作成 (200pixel四方を 20x20分割
+            const viBaseGrid = new THREE.GridHelper(200, 20, 0xff8888, 0xc0c0c0);
+            viBaseGrid.position.set(grndw, 0.01, grndh);
+            scene.add(viBaseGrid);
+            mzdata = new Maze1.MazeData01(20,20);
+            mzdata.init(0);
+        }
 
         if (mapType == 1) {
             // Maze1(通路・壁が同じ大きさの迷路) を使った迷路
             let mapnrow = map1mapdiv, mapncol = map1mapdiv;
-            let mzdata = new Maze1.MazeData01(mapnrow, mapncol);
+            mzdata = new Maze1.MazeData01(mapnrow, mapncol);
             // mzdata.create(11); // 棒倒し法 複数経路
             // mzdata.create(20); // 穴掘り法
             mzdata.create(21); // 穴掘り法
@@ -159,11 +223,10 @@ window.onload = () => {
             mzdata.seekPath2(); // 最短経路をもとめる
             mapnrow = mzdata.nrow_, mapncol = mzdata.ncol_;
             console.log("size=",[mapnrow,mapncol]);
-            const moMazeMtr = new CANNON.Material({name: 'maze'});
             const blockSize = 10, blockSize_ = blockSize/2;
-            const floorH = 1, wallH = blockSize_;
-            const floorH_=floorH/2, wallH_ = wallH/2;
-            let adjx = -mapncol/2*blockSize, adjy = 0, adjz = -mapnrow/2*blockSize;
+            const floorH = blockSize_, floorH_=floorH/2;
+            const wallH = blockSize, wallH_ = wallH/2;
+            let adjx = blockSize_, adjy = 0, adjz = blockSize_;
             let ix, iy, iz;
             iy = 0;
             for (let irow = 0; irow < mapnrow; ++irow) {
@@ -174,7 +237,7 @@ window.onload = () => {
                         // 壁
                         const sx = blockSize, sy = wallH, sz = blockSize;
                         const sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
-                        const px = ix, py = wallH_, pz = iz;
+                        const px = ix, py = 0, pz = iz;
                         {
                             const moWall2Body = new CANNON.Body
                             ({mass: 0,
@@ -194,7 +257,7 @@ window.onload = () => {
                         // 床
                         const sx = blockSize, sy = floorH, sz = blockSize;
                         const sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
-                        const px = ix, py = floorH_, pz = iz;
+                        const px = ix, py = -floorH_, pz = iz;
                         let floorColor = "#404040";
                         let idx = mzdata.rc2idx(irow, icol);
                         if (mzdata.path2_.includes(idx)) {
@@ -284,7 +347,7 @@ window.onload = () => {
                 moBallBody.addEventListener("collide", function(e) {
                     let moI = e.contact.bi;
                     let moJ = e.contact.bj;
-                    if ((moI.isVehicle != undefined) || (moJ.isVehicle != undefined)) {
+                    if ((moI.isMObj != undefined) || (moJ.isMObj != undefined)) {
                         reachToGoal();
                     }
                 });
@@ -294,26 +357,24 @@ window.onload = () => {
         // !!!!
         if (mapType == 2) {
             // Maze2(通路と薄い壁の迷路) を使った迷路
-            function createWall(sx, sy, sz, px, py, pz, adjx, adjy, adjz)
-                        {
-                            const sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
-                            const moWall2Body = new CANNON.Body
-                            ({mass: 0,
-                                shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
-                                position: new CANNON.Vec3(px+adjx, py+adjy, pz+adjz),
-                                material: moMazeMtr,
-                            });
-                            world.addBody(moWall2Body);
-                            const viWall2Geo = new THREE.BoxGeometry(sx, sy, sz);
-                            const viWall2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9});
-                            const viWall2Mesh = new THREE.Mesh(viWall2Geo, viWall2Mtr);
-                            scene.add(viWall2Mesh);
-                            viWall2Mesh.position.copy(moWall2Body.position);
-                            viWall2Mesh.quaternion.copy(moWall2Body.quaternion);
-                        }
-            // let mapnrow = 8, mapncol = 8;
+            function createWall(sx, sy, sz, px, py, pz, adjx, adjy, adjz) {
+                const sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+                const moWall2Body = new CANNON.Body
+                ({mass: 0,
+                    shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                    position: new CANNON.Vec3(px+adjx, py+adjy, pz+adjz),
+                    material: moMazeMtr,
+                });
+                world.addBody(moWall2Body);
+                const viWall2Geo = new THREE.BoxGeometry(sx, sy, sz);
+                const viWall2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9});
+                const viWall2Mesh = new THREE.Mesh(viWall2Geo, viWall2Mtr);
+                scene.add(viWall2Mesh);
+                viWall2Mesh.position.copy(moWall2Body.position);
+                viWall2Mesh.quaternion.copy(moWall2Body.quaternion);
+            }
             let mapnrow = map2mapdiv, mapncol = map2mapdiv;
-            let mzdata = new Maze2.MazeData02(mapnrow, mapncol);
+            mzdata = new Maze2.MazeData02(mapnrow, mapncol);
             // mzdata.create(11); // 棒倒し法 複数経路
             // mzdata.create(20); // 穴掘り法
             mzdata.create(21); // 穴掘り法
@@ -323,11 +384,10 @@ window.onload = () => {
             mzdata.dbgPrintMap();
             mzdata.seekPath2(); // 最短経路をもとめる
             mapnrow = mzdata.nrow_, mapncol = mzdata.ncol_;
-            const moMazeMtr = new CANNON.Material({name: 'maze'});
             const blockSize = 10, blockSize_ = blockSize/2;
             const floorH = 1, wallH = blockSize_, wallT = 0.2;
             const floorH_=floorH/2, wallH_ = wallH/2, wallT_ = wallT/2;
-            let adjx = -mapncol/2*blockSize, adjy = 0, adjz = -mapnrow/2*blockSize;
+            let adjx = blockSize_, adjy = 0, adjz = blockSize_;
             // 壁の向きに対する、壁のサイズ
             const swall = [[wallT, wallH, blockSize],
                             [blockSize, wallH, wallT],
@@ -468,7 +528,7 @@ window.onload = () => {
                 moBallBody.addEventListener("collide", function(e) {
                     let moI = e.contact.bi;
                     let moJ = e.contact.bj;
-                    if ((moI.isVehicle != undefined) || (moJ.isVehicle != undefined)) {
+                    if ((moI.isMObj != undefined) || (moJ.isMObj != undefined)) {
                         reachToGoal();
                     }
                 });
@@ -478,25 +538,39 @@ window.onload = () => {
         // !!!!
         if (mapType == 3) {
             // Maze2(通路と薄い壁の迷路) を使った迷路 ＋ Maze3の経路
-            function createWall(sx, sy, sz, px, py, pz, adjx, adjy, adjz)
-                        {
-                            const sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
-                            const moWall2Body = new CANNON.Body
-                            ({mass: 0,
-                                shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
-                                position: new CANNON.Vec3(px+adjx, py+adjy, pz+adjz),
-                                material: moMazeMtr,
-                            });
-                            world.addBody(moWall2Body);
-                            const viWall2Geo = new THREE.BoxGeometry(sx, sy, sz);
-                            const viWall2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9});
-                            const viWall2Mesh = new THREE.Mesh(viWall2Geo, viWall2Mtr);
-                            scene.add(viWall2Mesh);
-                            viWall2Mesh.position.copy(moWall2Body.position);
-                            viWall2Mesh.quaternion.copy(moWall2Body.quaternion);
-                        }
+            function createWall(sx, sy, sz, px, py, pz, adjx, adjy, adjz) {
+                const sx_ = sx/2, sy_ = sy/2, sz_ = sz/2;
+                const moWall2Body = new CANNON.Body
+                ({mass: 0,
+                    shape: new CANNON.Box(new CANNON.Vec3(sx_, sy_, sz_)),
+                    position: new CANNON.Vec3(px+adjx, py+adjy, pz+adjz),
+                    material: moMazeMtr,
+                });
+                world.addBody(moWall2Body);
+                const viWall2Geo = new THREE.BoxGeometry(sx, sy, sz);
+                const viWall2Mtr = new THREE.MeshBasicMaterial({transparent: true, opacity: 0.9});
+                const viWall2Mesh = new THREE.Mesh(viWall2Geo, viWall2Mtr);
+                scene.add(viWall2Mesh);
+                viWall2Mesh.position.copy(moWall2Body.position);
+                viWall2Mesh.quaternion.copy(moWall2Body.quaternion);
+                // お試しで、壁にぶつかったさいに、止める／エネルギーを 0 にする
+                moWall2Body.addEventListener("collide", function(e) {
+                    let moI = e.contact.bi;
+                    let moJ = e.contact.bj;
+                    let mobj = null;
+                    if (moI.isMObj != undefined) {
+                        mobj = moI;
+                    } else if (moI.isMObj != undefined) {
+                        mobj = moJ;
+                    }
+                    if (mobj != null) {
+                        mobj.velocity = new CANNON.Vec3(0, 0, 0);
+                        mobj.angularVelocity = new CANNON.Vec3(0, 0, 0);
+                    }
+                });
+            }
             let mapnrow = map3mapdiv, mapncol = map3mapdiv;
-            let mzdata = new Maze2.MazeData02(mapnrow, mapncol);
+            mzdata = new Maze2.MazeData02(mapnrow, mapncol);
             // mzdata.create(11); // 棒倒し法 複数経路
             // mzdata.create(20); // 穴掘り法
             // mzdata.create(21); // 穴掘り法 複数経路
@@ -508,15 +582,14 @@ window.onload = () => {
             mzdata.resetStartGoal(); // スタート・ゴールを最遠方に再配置
             mzdata.dbgPrintMap();
             mzdata.seekPath2(); // 最短経路をもとめる
-            let mzdata3 = new Maze3.MazeData03();
+            mzdata3 = new Maze3.MazeData03();
             mzdata3.create_from_maze2(mzdata);
             mzdata3.seekPath7();  // 斜めあり
             mapnrow = mzdata.nrow_, mapncol = mzdata.ncol_;
-            const moMazeMtr = new CANNON.Material({name: 'maze'});
             const blockSize = 10, blockSize_ = blockSize/2;
             const floorH = 1, wallH = blockSize_, wallT = 0.2;
             const floorH_=floorH/2, wallH_ = wallH/2, wallT_ = wallT/2;
-            let adjx = -mapncol/2*blockSize, adjy = 0, adjz = -mapnrow/2*blockSize;
+            let adjx = blockSize_*1.5, adjy = 0, adjz = blockSize_*1.5;
             // 壁の向きに対する、壁のサイズ
             const swall = [[wallT, wallH, blockSize],
                             [blockSize, wallH, wallT],
@@ -680,7 +753,7 @@ window.onload = () => {
                 moBallBody.addEventListener("collide", function(e) {
                     let moI = e.contact.bi;
                     let moJ = e.contact.bj;
-                    if ((moI.isVehicle != undefined) || (moJ.isVehicle != undefined)) {
+                    if ((moI.isMObj != undefined) || (moJ.isMObj != undefined)) {
                         reachToGoal();
                     }
                 });
@@ -703,7 +776,13 @@ window.onload = () => {
                                 tline.push(vh);
                             }
                         }
+                        let v1st = tline.shift();
+                        tline.unshift(v1st);
+                        tline.unshift(v1st); // 一旦、行の冒頭を２つに
                         for (let ipb = 0; ipb < nPerBlock; ++ipb) {
+                            matrix.push(tline);
+                        }
+                        if (irow == 0) {  // 1行目の場合は先頭を二重に
                             matrix.push(tline);
                         }
                     }
@@ -747,16 +826,16 @@ window.onload = () => {
                 }
                 return img;
             }
-            function createGroundGeo2(matrix, momatrix, textureimg, sizeX, sizeZ, lengthX, lengthZ, posiX, posiZ, moGroundMtr, bWireframe) {
+            function createGroundGeo2(matrix, momatrix, textureimg, sizeX, sizeZ, lengthX, lengthZ, blockSize, posiX, posiZ, moGroundMtr, bWireframe) {
                 const sizeX_ = sizeX-1;
                 const sizeZ_ = sizeZ-1;
                 const elemSizeX = lengthX / sizeX_;
                 const elemSizeZ = lengthZ / sizeZ_;
                 const moHeightfieldShape = new CANNON.Heightfield(momatrix, {elementSize: elemSizeX,})
-                let moGroundBody = new CANNON.Body({ mass: 0, material: moGroundMtr })
-                moGroundBody.addShape(moHeightfieldShape)
-                // body の中心位置が、原点に来るように位置を調整
-                moGroundBody.position.set(-lengthX/2 + posiX, 0, lengthZ/2 + posiZ)
+                let moGroundBody = new CANNON.Body({ mass: 0, material: moGroundMtr });
+                moGroundBody.addShape(moHeightfieldShape);
+                // body の左上が、原点に来るように位置を調整
+                moGroundBody.position.set(0, 0, lengthZ)
                 moGroundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0)
                 const viGroundGeo = new THREE.BufferGeometry();
                 let viPos = new Float32Array(sizeX*sizeZ*3);
@@ -816,7 +895,7 @@ window.onload = () => {
             }
             let mapdiv = map4mapdiv;
             let mapnrow = mapdiv, mapncol = mapdiv;
-            let mzdata = new Maze1.MazeData01(mapnrow, mapncol);
+            mzdata = new Maze1.MazeData01(mapnrow, mapncol);
             // mzdata.create(11); // 棒倒し法 複数経路
             // mzdata.create(20); // 穴掘り法
             mzdata.create(21); // 穴掘り法
@@ -827,12 +906,12 @@ window.onload = () => {
             mzdata.seekPath2(); // 最短経路をもとめる
             mapnrow = mzdata.nrow_, mapncol = mzdata.ncol_;
             console.log("size=",[mapnrow,mapncol]);
-            let blockSize = 15; // 迷路１マスあたりのサイズ
+            let blockSize = 10; // 迷路１マスあたりのサイズ
             let blockSize_ = blockSize/2;
-            let nPerBlock = 7;  // 1ブロックあたりの表示セグメント
+            let nPerBlock = 8;  // 1ブロックあたりの表示セグメント
             let ampHigh = 5; // 壁の高さ
-            let demw = mapdiv*nPerBlock; // 点の数;
-            let demh = mapdiv*nPerBlock; // 点の数;
+            let demw = mapdiv*nPerBlock+1; // 点の数;
+            let demh = mapdiv*nPerBlock+1; // 点の数;
             let blockSizeW = mapncol*blockSize; // demw * blockSize; // lengthX;
             let blockSizeH = mapnrow*blockSize; // demh * blockSize; // lengthZ; // マップのpixelサイズ
             let posiX = 0;
@@ -841,18 +920,18 @@ window.onload = () => {
             let {matrix, momatrix, vzmax} = createDemFromMaze(mzdata, nPerBlock, ampHigh);
             let textureimg = createImgFromMaze(mzdata, nPerBlock);
             let {moGroundBody, viGroundMesh, moHeightfieldShape, viGroundMtr, viPos, viGroundGeo} =
-                createGroundGeo2(matrix, momatrix, textureimg, demw, demh, blockSizeW, blockSizeH, posiX, posiZ, moGroundMtr, bWireframe);
+                createGroundGeo2(matrix, momatrix, textureimg, demw, demh, blockSizeW, blockSizeH, blockSize, posiX, posiZ, moGroundMtr, bWireframe);
             world.addBody(moGroundBody);
             scene.add(viGroundMesh);
             world.addBody(moGroundBody);
             scene.add(viGroundMesh);
             viGroundMesh.position.copy(moGroundBody.position);
             // 車の位置をスタート地点に
-            let adjx = -mapncol/2*blockSize, adjy = 0, adjz = -mapnrow/2*blockSize;
+            let adjx = blockSize_, adjy = 0, adjz = blockSize_;
             let sp = mzdata.pStart_;
-            iniX = sp[1]*blockSize+adjx + blockSize_;
+            iniX = sp[1]*blockSize+adjx;
             iniY += adjy-10;
-            iniZ = sp[0]*blockSize+adjz + blockSize_;
+            iniZ = sp[0]*blockSize+adjz;
             // 車の向きの最短経路のある方向に向ける
             const idir2rotY = [-0.5, 1, 0.5, 0];
             for (let idir = 0; idir < 4; ++idir) {
@@ -866,7 +945,6 @@ window.onload = () => {
                     break;
                 }
             }
-            const moMazeMtr = new CANNON.Material({name: 'maze'});
             // スタート地点にボールを追加
             {
                 let sp = mzdata.pStart_;
@@ -917,7 +995,7 @@ window.onload = () => {
                 moBallBody.addEventListener("collide", function(e) {
                     let moI = e.contact.bi;
                     let moJ = e.contact.bj;
-                    if ((moI.isVehicle != undefined) || (moJ.isVehicle != undefined)) {
+                    if ((moI.isMObj != undefined) || (moJ.isMObj != undefined)) {
                         reachToGoal();
                     }
                 });
@@ -929,7 +1007,7 @@ window.onload = () => {
             // Maze1(通路・壁が同じ大きさの迷路) を使って highfield で表現（山と谷を逆転）：キャットウォーク
             function createDemFromMaze(mzdata, nPerBlock, highBias, highAmp) {
                 // 通路を山に、壁を谷に  （山と谷を逆転）
-                let demw = mzdata.ncol_*nPerBlock, demh = mzdata.nrow_*nPerBlock;
+                let demw = mzdata.ncol_*nPerBlock+1, demh = mzdata.nrow_*nPerBlock+1;
                 let matrix = [];
                 let vzmax = 0;
                 if (1) {
@@ -937,8 +1015,8 @@ window.onload = () => {
                     matrix = Array.from(new Array(demh), _ => new Array(demw).fill(0));
                     // let perlingXYHStepList = [[0.01, 1], [0.05, 0.5], [0.1, 0.2]]; // 緩やかに
                     let perlingXYHStepList = [[0.01, 1], [0.05, 0.8], [0.1, 0.5]]; // ちょい激しく
-                    let nx = demw; // mzdata.ncol_;
-                    let ny = demh; // mzdata.nrow_;
+                    let nx = demw;
+                    let ny = demh;
                     for (let ipstep = 0; ipstep < perlingXYHStepList.length; ++ipstep) {
                         let pxystep = perlingXYHStepList[ipstep][0];
                         let phigh = perlingXYHStepList[ipstep][1];
@@ -969,14 +1047,36 @@ window.onload = () => {
                     }
                     //  ＊ 迷路データ  .. 壁部分を凹にする（凹凸を逆に）
                     {
-                        for (let iy = 0; iy < ny; ++iy) {
-                            let irow = Math.floor(iy/nPerBlock);
-                            for (let ix = 0; ix < nx; ++ix) {
-                                let icol = Math.floor(ix/nPerBlock);
+                        {
+                            let irow = 0, icol = 0, ix = 0, iy = 0;
+                            {
                                 if (mzdata.isWall(irow, icol)) {
                                     matrix[iy][ix] -= 0.5;
                                 }
-                                // matrix[iy][ix] *= ampHigh;
+                                matrix[iy][ix] = matrix[iy][ix]*highAmp + highBias;
+                            }
+                            for (let iy = 1; iy < ny; ++iy) {
+                                let irow = Math.floor((iy-1)/nPerBlock);
+                                if (mzdata.isWall(irow, icol)) {
+                                    matrix[iy][ix] -= 0.5;
+                                }
+                                matrix[iy][ix] = matrix[iy][ix]*highAmp + highBias;
+                            }
+                            for (let ix = 1; ix < nx; ++ix) {
+                                let icol = Math.floor((ix-1)/nPerBlock);
+                                if (mzdata.isWall(irow, icol)) {
+                                    matrix[iy][ix] -= 0.5;
+                                }
+                                matrix[iy][ix] = matrix[iy][ix]*highAmp + highBias;
+                            }
+                        }
+                        for (let iy = 1; iy < ny; ++iy) {
+                            let irow = Math.floor((iy-1)/nPerBlock);
+                            for (let ix = 1; ix < nx; ++ix) {
+                                let icol = Math.floor((ix-1)/nPerBlock);
+                                if (mzdata.isWall(irow, icol)) {
+                                    matrix[iy][ix] -= 0.5;
+                                }
                                 matrix[iy][ix] = matrix[iy][ix]*highAmp + highBias;
                             }
                         }
@@ -1026,12 +1126,12 @@ window.onload = () => {
                 const sizeZ_ = sizeZ-1;
                 const elemSizeX = lengthX / sizeX_;
                 const elemSizeZ = lengthZ / sizeZ_;
-                const moHeightfieldShape = new CANNON.Heightfield(momatrix, {elementSize: elemSizeX,})
-                let moGroundBody = new CANNON.Body({ mass: 0, material: moGroundMtr })
-                moGroundBody.addShape(moHeightfieldShape)
-                // body の中心位置が、原点に来るように位置を調整
-                moGroundBody.position.set(-lengthX/2 + posiX, 0, lengthZ/2 + posiZ)
-                moGroundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0)
+                const moHeightfieldShape = new CANNON.Heightfield(momatrix, {elementSize: elemSizeX,});
+                let moGroundBody = new CANNON.Body({ mass: 0, material: moGroundMtr });
+                moGroundBody.addShape(moHeightfieldShape);
+                // body の左上が、原点に来るように位置を調整
+                moGroundBody.position.set(0, 0, lengthZ);
+                moGroundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
                 const viGroundGeo = new THREE.BufferGeometry();
                 let viPos = new Float32Array(sizeX*sizeZ*3);
                 {
@@ -1090,7 +1190,7 @@ window.onload = () => {
             }
             let mapdiv = map5mapdiv;
             let mapnrow = mapdiv, mapncol = mapdiv;
-            let mzdata = new Maze1.MazeData01(mapnrow, mapncol);
+            mzdata = new Maze1.MazeData01(mapnrow, mapncol);
             // mzdata.create(11); // 棒倒し法 複数経路
             // mzdata.create(20); // 穴掘り法
             mzdata.create(21); // 穴掘り法
@@ -1100,15 +1200,15 @@ window.onload = () => {
             mzdata.dbgPrintMap();
             mzdata.seekPath2(); // 最短経路をもとめる
             mapnrow = mzdata.nrow_, mapncol = mzdata.ncol_;
-            let blockSize = 15; // 迷路１マスあたりのサイズ
+            let blockSize = 10; // 迷路１マスあたりのサイズ
             let blockSize_ = blockSize/2;
-            let nPerBlock = 7;  // 1ブロックあたりの表示セグメント
+            let nPerBlock = 8;  // 1ブロックあたりの表示セグメント
             let highBias = map5highBias; // 壁の高さ（バイアス・切片
             let highAmp = map5highAmp; // 壁の高さ（振幅
-            let demw = mapdiv*nPerBlock; // 点の数;
-            let demh = mapdiv*nPerBlock; // 点の数;
-            let blockSizeW = mapncol*blockSize; // demw * blockSize; // lengthX;
-            let blockSizeH = mapnrow*blockSize; // demh * blockSize; // lengthZ; // マップのpixelサイズ
+            let demw = mapdiv*nPerBlock+1; // 点の数;
+            let demh = mapdiv*nPerBlock+1; // 点の数;
+            let blockSizeW = mapncol*blockSize;
+            let blockSizeH = mapnrow*blockSize; // マップのpixelサイズ
             let posiX = 0;
             let posiZ = 0;
             let bWireframe = true;
@@ -1122,7 +1222,7 @@ window.onload = () => {
             scene.add(viGroundMesh);
             viGroundMesh.position.copy(moGroundBody.position);
             // 車の位置をスタート地点に
-            let adjx = -mapncol/2*blockSize, adjy = 0, adjz = -mapnrow/2*blockSize;
+            let adjx = 0, adjy = 0, adjz = 0;
             let sp = mzdata.pStart_;
             let vhigh = moHeightfieldShape.getHeightAt(sp[1]/mapncol,sp[0]/mapnrow,false);
             iniX = sp[1]*blockSize+adjx + blockSize_;
@@ -1141,7 +1241,6 @@ window.onload = () => {
                     break;
                 }
             }
-            const moMazeMtr = new CANNON.Material({name: 'maze'});
             // スタート地点にボールを追加
             {
                 let sp = mzdata.pStart_;
@@ -1192,7 +1291,7 @@ window.onload = () => {
                 moBallBody.addEventListener("collide", function(e) {
                     let moI = e.contact.bi;
                     let moJ = e.contact.bj;
-                    if ((moI.isVehicle != undefined) || (moJ.isVehicle != undefined)) {
+                    if ((moI.isMObj != undefined) || (moJ.isMObj != undefined)) {
                         reachToGoal();
                     }
                 });
@@ -1220,20 +1319,19 @@ window.onload = () => {
                             viWall2Mesh.quaternion.copy(moWall2Body.quaternion);
                         }
             let mapnrow = 1, mapncol = 1;
-            let mzdata = new Maze2.MazeData02();
+            mzdata = new Maze2.MazeData02();
             let nameName = map6imap2name[map6imap];
             mzdata.create_from(Maze2data.get_map_data(nameName)); // 固定マップ
             mzdata.dbgPrintMap();
             mzdata.seekPath2(); // 最短経路をもとめる
-            let mzdata3 = new Maze3.MazeData03();
+            mzdata3 = new Maze3.MazeData03();
             mzdata3.create_from_maze2(mzdata);
             mzdata3.seekPath7();  // 斜めあり
             mapnrow = mzdata.nrow_, mapncol = mzdata.ncol_;
-            const moMazeMtr = new CANNON.Material({name: 'maze'});
             const blockSize = 10, blockSize_ = blockSize/2;
             const floorH = 1, wallH = blockSize_, wallT = 0.2;
             const floorH_=floorH/2, wallH_ = wallH/2, wallT_ = wallT/2;
-            let adjx = -mapncol/2*blockSize, adjy = 0, adjz = -mapnrow/2*blockSize;
+            let adjx = blockSize_*1.5, adjy = 0, adjz = blockSize_*1.5;
             // 壁の向きに対する、壁のサイズ
             const swall = [[wallT, wallH, blockSize],
                             [blockSize, wallH, wallT],
@@ -1397,22 +1495,19 @@ window.onload = () => {
                 moBallBody.addEventListener("collide", function(e) {
                     let moI = e.contact.bi;
                     let moJ = e.contact.bj;
-                    if ((moI.isVehicle != undefined) || (moJ.isVehicle != undefined)) {
+                    if ((moI.isMObj != undefined) || (moJ.isMObj != undefined)) {
                         reachToGoal();
                     }
                 });
             }
         }
-
-        return [world, camera, scene, renderer, orbitControls, vehicle];
+        return [world, camera, scene, renderer, orbitControls, mobj, mzdata];
     };
 
-    [world, camera, scene, renderer, orbitControls, vehicle] = createWorld();
-    resetVehiclePosi();
+    [world, camera, scene, renderer, orbitControls, mobj, mzdata] = createWorld();
+    resetMObjPosi();
 
     // ----------------------------------------
-    let srclist = [];
-
     addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight
         camera.updateProjectionMatrix()
@@ -1423,11 +1518,6 @@ window.onload = () => {
 
     let cameraPosi = 0;
 
-    // キー同時押しのときに、挙動が思ったようにならない
-    // - ArrowUp を押したまま、 ArrowLeft を押して放しても、「ArrowUp の keydown」イベントが発生しない
-    // 再度キーを押下するとイベント発生することから、
-    // 下記のよう キーイベント発生時の状態を記録する（保持する）挙動に切り替える
-    // 但し、対象は (アクセル操作、ハンドル、ブレーキ（サイドブレーキ）、バック)に限る
     let keyEvnt = {
         forwards:false,
         backwards:false,
@@ -1443,7 +1533,6 @@ window.onload = () => {
     document.addEventListener('keydown', (event) => {
         // ゲームパッドの無効化
         gamepad.enable_ = false;
-
         switch (event.key) {
         case 'ArrowUp':
             keyEvnt.forwards = true;
@@ -1467,8 +1556,26 @@ window.onload = () => {
             cameraPosi = (cameraPosi + 1) % 5;
             break;
         case 'r':
-            // 車の姿勢を戻す／車をひっくり返す ..
-            vehicle.keydown_resetPosture();
+            // 姿勢を戻す
+            {
+                mobj.position.y += 5;
+                // 進行方向（回転角Y）を使い、方向を初期化
+                var vquat = mobj.quaternion;
+                var veuler = new CANNON.Vec3(0, 0, 0);
+                vquat.toEuler(veuler);
+                var ry = veuler.y;
+                const carInitQuat = new CANNON.Quaternion();
+                carInitQuat.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), ry);
+                mobj.quaternion.copy(carInitQuat);
+                // 速度、角速度を初期化しておく
+                mobj.velocity = new CANNON.Vec3(0, 0, 0);
+                mobj.angularVelocity = new CANNON.Vec3(0, 0, 0);
+            }
+            break;
+        case 'g':
+            // 速度、角速度を初期化しておく
+            mobj.velocity = new CANNON.Vec3(0, 0, 0);
+            mobj.angularVelocity = new CANNON.Vec3(0, 0, 0);
             break;
         case 'q':
             // ゲームパッドの有効化／キーボードからゲームパッドへフォーカスを移す
@@ -1483,29 +1590,32 @@ window.onload = () => {
         case '6':
             // マップの切り替え
             mapType = parseInt(event.key);
+            changeKeyEvnetMode();
             initMapPara();
-            [world, camera, scene, renderer, orbitControls, vehicle] = createWorld();
-            resetVehiclePosi();
+            [world, camera, scene, renderer, orbitControls, mobj, mzdata] = createWorld();
+            resetMObjPosi();
             break;
-        case ' ':
-            let px, py, pz;
-            [px, py, pz] = vehicle.getPosition();
-            px = parseInt(px);
-            pz = parseInt(pz);
-            py = parseInt(py);
-            let vquat = vehicle.getModel().chassisBody.quaternion;
-            let veuler = new CANNON.Vec3(0, 0, 0);
-            vquat.toEuler(veuler);
-            let roty = veuler.y / Math.PI + 0.5;
-            roty = Math.round(roty*100)/100;
-            console.log(" p[z,x,y]=",pz,px,py, " rotY=", roty)
+        case '9':
+            // マップの切り替え
+            mapType = 0;
+            changeKeyEvnetMode();
+            initMapPara();
+            [world, camera, scene, renderer, orbitControls, mobj, mzdata] = createWorld();
+            resetMObjPosi();
+            break;
+        case 'z':
+            keyEventMode = ((keyEventMode+4)%6)+1;
+            changeKeyEvnetMode();
+            break;
+        case 'x':
+            keyEventMode = (keyEventMode%6)+1;
+            changeKeyEvnetMode();
             break;
         case '0':
             initMapPara();
-            [world, camera, scene, renderer, orbitControls, vehicle] = createWorld();
-            resetVehiclePosi();
+            [world, camera, scene, renderer, orbitControls, mobj, mzdata] = createWorld();
+            resetMObjPosi();
             break;
-
         }
     })
 
@@ -1527,14 +1637,478 @@ window.onload = () => {
         case 'b':
             keyEvnt.brake = false;
             break
-
         }
     })
 
 
+    function keyEvnetMobj_v1(keyEvnt, mobj) {
+        // 自由位置 （補正もしない）
+        let vposi = mobj.position;
+        let vquat = mobj.quaternion;
+        if (keyEvnt.forwards) {
+            let vv = vquat.vmult(new CANNON.Vec3(-1, 0, 0));
+            mobj.position.set(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z);
+        } else if (keyEvnt.backwards) {
+            let vv = vquat.vmult(new CANNON.Vec3(1, 0, 0));
+            mobj.position.set(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z);
+        }
+        if (keyEvnt.left) {
+            const quatL = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), 0.02);
+            mobj.quaternion.copy(vquat.mult(quatL));
+        } else if (keyEvnt.right) {
+            const quatR = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -0.02);
+            mobj.quaternion.copy(vquat.mult(quatR));
+        }
+        if (keyEvnt.brake) {
+            mobj.applyImpulse(new CANNON.Vec3(0, 1, 0));
+        }
+    }
+
+
+    let adjDelayIni = 45; // timeStepの逆数（１秒に相当）
+    let adjDelay = 0;  // キーリリース時のアジャストするまでの遅延
+    function keyEvnetMobj_v2(keyEvnt, mobj) {
+        // 自由位置 + keyUp時にアジャスト位置に移動させる
+        const stepMove = 1; // 2;
+        const stepRotRad = 0.04;
+        let vposi = mobj.position;
+        let vquat = mobj.quaternion;
+        if (keyEvnt.forwards) {
+            let vv = vquat.vmult(new CANNON.Vec3(-stepMove, 0, 0));
+            mobj.position.set(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z);
+            adjDelay = adjDelayIni;
+        } else if (keyEvnt.backwards) {
+            let vv = vquat.vmult(new CANNON.Vec3(stepMove, 0, 0));
+            mobj.position.set(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z);
+            adjDelay = adjDelayIni;
+        }
+        if (keyEvnt.left) {
+            const quatL = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), stepRotRad);
+            mobj.quaternion.copy(vquat.mult(quatL));
+            adjDelay = adjDelayIni;
+        } else if (keyEvnt.right) {
+            const quatR = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -stepRotRad);
+            mobj.quaternion.copy(vquat.mult(quatR));
+            adjDelay = adjDelayIni;
+        }
+        {
+            if (adjDelay > 0) {
+                --adjDelay;
+            } else {
+                // vposi をgrid位置の中央位置に移動させる
+                let step = 10, step_ = step/2, step_34 = step*3/4;
+                if ((mapType == 3) || (mapType == 6)) {
+                    step_ = step_34;
+                }
+                let vposiAdj = new CANNON.Vec3(Math.round((vposi.x-step_)/step)*step+step_,
+                                                vposi.y,
+                                                Math.round((vposi.z-step_)/step)*step+step_);
+                let vposiDiff = new CANNON.Vec3((vposiAdj.x-vposi.x)/10, vposi.y, (vposiAdj.z-vposi.z)/10);
+                mobj.position.set(vposi.x + vposiDiff.x, vposi.y, vposi.z + vposiDiff.z);
+                // vquatの Y軸回転を 90度 Math.PI/2 ごとに
+                let veuler = new CANNON.Vec3(0, 0, 0);
+                vquat.toEuler(veuler);
+                const PI2 = Math.PI/2;
+                let yadj = Math.round(veuler.y/PI2)*PI2;
+                let addy = (yadj - veuler.y)/10;
+                let quat_ = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), addy);
+                mobj.quaternion.copy(vquat.mult(quat_));
+                // mobj.velocity = new CANNON.Vec3(0, 0, 0);
+                mobj.angularVelocity = new CANNON.Vec3(0, 0, 0);
+            }
+        }
+        if (keyEvnt.brake) {
+            mobj.applyImpulse(new CANNON.Vec3(0, 1, 0));
+            adjDelay = adjDelayIni;
+        }
+    }
+
+
+    // let actListDelayIni = 45; // timeStepの逆数（１秒に相当）
+    let kev3actListDelayIni = 12;
+    let kev3actListDelay = 0;  // キーリリース時のアジャストするまでの遅延
+    let kev3actList = [];
+    let kev3irow = 1, kev3icol = 1; // maze の [irow,icol]
+    let kev3idir = 3; // maze の idir
+    // 角度と mazeのidir のマッピング （角度の 左向きが rad=0に注意)
+    //         A 3/-1[rad]
+    // 0[rad]  | 3[idir]
+    // 2[idir] |   
+    //  <------+------>
+    //         |     2/-2[rad] / 0[idir]
+    //  1[rad] V
+    //   / 1[idir]
+    const irad2idir = {"0":2, "1":1, "2":0, "3":3, "-1":3, "-2":0};
+    function keyEvnetMobj_v3(keyEvnt, mobj) {
+        // Grid位置にそって移動 + keyUp時にアジャスト位置に移動させる
+        const actMove = 10, actMove_ = actMove/2;
+        // const actRotRad = Math.PI/4;
+        const actRotRad = Math.PI/2;
+        const actTimeM = 10;
+        const actTimeMsq2 = 14;
+        const actTimeR = 10;
+        const stepMove = actMove/actTimeM;
+        const stepMovesq2 = Math.sqrt(2)*actMove/actTimeMsq2;
+        const stepRotRad = actRotRad/actTimeR;
+        let vposi = mobj.position;
+        let vquat = mobj.quaternion;
+        if (kev3actListDelay > 0) {
+            --kev3actListDelay;
+        } else {
+            if (keyEvnt.forwards) {
+                if (!mzdata.isWallPosiDir([kev3irow,kev3icol], kev3idir)) {
+                    kev3actList.push(['m', -stepMove, actTimeM]);
+                    kev3actListDelay = kev3actListDelayIni;
+                }
+            } else if (keyEvnt.backwards) {
+                if (!mzdata.isWallPosiDir([kev3irow,kev3icol], (kev3idir+2)%4)) {
+                    kev3actList.push(['m', stepMove, actTimeM]);
+                    kev3actListDelay = kev3actListDelayIni;
+                }
+            }
+            if (keyEvnt.left) {
+                kev3actList.push(['r', stepRotRad, actTimeR]);
+                kev3actListDelay = kev3actListDelayIni;
+                kev3idir = (kev3idir + 3) % 4;
+            } else if (keyEvnt.right) {
+                kev3actList.push(['r', -stepRotRad, actTimeR]);
+                kev3actListDelay = kev3actListDelayIni;
+                kev3idir = (kev3idir + 1) % 4;
+            }
+        }
+        if (kev3actList.length > 0) {
+            let [act, step, times] = kev3actList.shift();
+            if (act == 'm') {
+                let vv = vquat.vmult(new CANNON.Vec3(step, 0, 0));
+                mobj.position.set(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z);
+            }
+            if (act == 'r') {
+                const quatR = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), step);
+                mobj.quaternion.copy(vquat.mult(quatR));
+            }
+            if (times > 1) {
+                --times;
+                kev3actList.unshift([act, step, times]);
+            }
+        } else {
+            {
+                // vposi をgrid位置の中央位置に移動させる
+                let step = 10, step_ = step/2, step_34 = step*3/4;
+                if ((mapType == 3) || (mapType == 6)) {
+                    step_ = step_34;
+                }
+                let ix = Math.round((vposi.x-step_)/step), iz = Math.round((vposi.z-step_)/step);
+                [kev3irow, kev3icol] = [iz,ix];
+                let vposiAdj = new CANNON.Vec3(ix*step+step_, vposi.y, iz*step+step_);
+                let vposiDiff = new CANNON.Vec3((vposiAdj.x-vposi.x)/10, vposi.y, (vposiAdj.z-vposi.z)/10);
+                mobj.position.set(vposi.x + vposiDiff.x, vposi.y, vposi.z + vposiDiff.z);
+            }
+            {
+                // vquatの Y軸回転を 90度 Math.PI/2 ごとに
+                let veuler = new CANNON.Vec3(0, 0, 0);
+                vquat.toEuler(veuler);
+                const PI2 = Math.PI/2;
+                let iradR = parseInt(Math.round(veuler.y/PI2));
+                let yadj = iradR*PI2;
+                let addy = (yadj - veuler.y)/10;
+                let quat_ = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), addy);
+                mobj.quaternion.copy(vquat.mult(quat_));
+                // mobj.velocity = new CANNON.Vec3(0, 0, 0);
+                mobj.angularVelocity = new CANNON.Vec3(0, 0, 0);
+                kev3idir = irad2idir[""+iradR];
+            }
+        }
+        if (keyEvnt.brake) {
+            mobj.applyImpulse(new CANNON.Vec3(0, 1, 0));
+        }
+    }
+
+    function keyEvnetMobj_v4(keyEvnt, mobj) {
+        // 力で移動・摩擦で停止：自由位置（補正もしない）
+        let vposi = mobj.position;
+        let vquat = mobj.quaternion;
+        const appForce = 2;
+        const rotAngRad = 0.03;
+        if (keyEvnt.forwards) {
+            let vv = vquat.vmult(new CANNON.Vec3(-appForce, 0, 0));
+            mobj.applyImpulse(vv);
+        } else if (keyEvnt.backwards) {
+            let vv = vquat.vmult(new CANNON.Vec3(appForce, 0, 0));
+            mobj.applyImpulse(vv);
+        }
+        if (keyEvnt.left) {
+            const quatL = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotAngRad);
+            mobj.quaternion.copy(vquat.mult(quatL));
+        } else if (keyEvnt.right) {
+            const quatR = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -rotAngRad);
+            mobj.quaternion.copy(vquat.mult(quatR));
+        }
+        if (keyEvnt.brake) {
+            mobj.applyImpulse(new CANNON.Vec3(0, 1, 0));
+        }
+    }
+
+    let kev5AdjDelayIni = 45; // timeStepの逆数（１秒に相当）
+    let kev5AdjDelay = 0;  // キーリリース時のアジャストするまでの遅延
+    function keyEvnetMobj_v5(keyEvnt, mobj) {
+        // 力で移動・摩擦で停止：自由位置（keyUp時にアジャスト位置に移動させる）
+        let vposi = mobj.position;
+        let vquat = mobj.quaternion;
+        const appForce = 2;
+        const rotAngRad = 0.03;
+        if (keyEvnt.forwards) {
+            let vv = vquat.vmult(new CANNON.Vec3(-appForce, 0, 0));
+            mobj.applyImpulse(vv);
+            kev5AdjDelay = kev5AdjDelayIni;
+        } else if (keyEvnt.backwards) {
+            let vv = vquat.vmult(new CANNON.Vec3(appForce, 0, 0));
+            mobj.applyImpulse(vv);
+            kev5AdjDelay = kev5AdjDelayIni;
+        }
+        if (keyEvnt.left) {
+            const quatL = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotAngRad);
+            mobj.quaternion.copy(vquat.mult(quatL));
+            kev5AdjDelay = kev5AdjDelayIni;
+        } else if (keyEvnt.right) {
+            const quatR = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -rotAngRad);
+            mobj.quaternion.copy(vquat.mult(quatR));
+            kev5AdjDelay = kev5AdjDelayIni;
+        }
+        {
+            if (kev5AdjDelay > 0) {
+                --kev5AdjDelay;
+            } else {
+                {
+                    // vposi をgrid位置の中央位置に移動させる
+                    if (mzdata3 != null) {
+                        let step = 5, step_ = step/2;
+                        let ix = Math.round((vposi.x-step_)/step), iz = Math.round((vposi.z-step_)/step);
+                        if (mzdata3.data_[iz][ix] == 1) {
+                            let x0 = (vposi.x-step_)/step, z0 = (vposi.z-step_)/step;
+                            let iixmin = ix, iizmin = iz, lenmin = 9999; // (x0 -ix)**2 + (z0 -iz)**2;
+                            for (let iiz = iz-1; iiz <= iz+1; ++iiz) {
+                                if (iiz < 0 || iiz >= mzdata3.nrow_) {
+                                    continue;
+                                }
+                                for (let iix = ix-1; iix <= ix+1; ++iix) {
+                                    if (iix < 0 || iix >= mzdata3.ncol_) {
+                                        continue;
+                                    }
+                                    if (mzdata3.data_[iiz][iix] == 1) {
+                                        continue;
+                                    }
+                                    let len =  (x0 -iix)**2 + (z0 -iiz)**2;
+                                    if (lenmin > len) {
+                                        lenmin = len;
+                                        iixmin = iix;
+                                        iizmin = iiz;
+                                    }
+                                }
+                            }
+                            if (lenmin != 9999) {
+                                ix = iixmin;
+                                iz = iizmin;
+                            }
+                        }
+                        let vposiAdj = new CANNON.Vec3(ix*step+step_, vposi.y, iz*step+step_);
+                        let vposiDiff = new CANNON.Vec3((vposiAdj.x-vposi.x)/10, vposi.y, (vposiAdj.z-vposi.z)/10);
+                        mobj.position.set(vposi.x + vposiDiff.x, vposi.y, vposi.z + vposiDiff.z);
+                    } else {
+                        // vposi をgrid位置の中央位置に移動させる
+                        let step = 10, step_ = step/2;
+                        let vposiAdj = new CANNON.Vec3(Math.round((vposi.x-step_)/step)*step+step_,
+                                                    vposi.y,
+                                                    Math.round((vposi.z-step_)/step)*step+step_);
+                        let vposiDiff = new CANNON.Vec3((vposiAdj.x-vposi.x)/10, vposi.y, (vposiAdj.z-vposi.z)/10);
+                        mobj.position.set(vposi.x + vposiDiff.x, vposi.y, vposi.z + vposiDiff.z);
+                    }
+                    // mobj.velocity = new CANNON.Vec3(0, 0, 0);
+                    mobj.angularVelocity = new CANNON.Vec3(0, 0, 0);
+                }
+                // vquatの Y軸回転を 45度 Math.PI/4 ごとに
+                let veuler = new CANNON.Vec3(0, 0, 0);
+                vquat.toEuler(veuler);
+                const PI4 = Math.PI/4;
+                let yadj = Math.round(veuler.y/PI4)*PI4;
+                let addy = (yadj - veuler.y)/10;
+                let quat_ = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), addy);
+                mobj.quaternion.copy(vquat.mult(quat_));
+                // mobj.velocity = new CANNON.Vec3(0, 0, 0);
+                mobj.angularVelocity = new CANNON.Vec3(0, 0, 0);
+            }
+        }
+        if (keyEvnt.brake) {
+        mobj.applyImpulse(new CANNON.Vec3(0, 2, 0));
+            kev5AdjDelay = kev5AdjDelayIni;
+        }
+    }
+
+
+    // let actListDelayIni = 45; // timeStepの逆数（１秒に相当）
+    let kev6actListDelayIni = 12;
+    let kev6actListDelay = 0;  // キーリリース時のアジャストするまでの遅延
+    let kev6actList = [];
+    let kev6mobj_irot = 0;
+    function keyEvnetMobj_v6(keyEvnt, mobj) {
+        // Grid位置にそって移動 + keyUp時にアジャスト位置に移動させる
+        const appForce = 3;
+        const appForceSq2 = Math.sqrt(2)*appForce;
+        const actMove = 10, actMove_ = actMove/2;
+        const actRotRad = Math.PI/4;
+        const actTimeM = 8;   // 前進キー押下１回分の微小の繰り返し回数／一回押下分の移動
+        const actTimeMbk = 7; // 後進キー押下１回分の微小の繰り返し回数／一回押下分の移動
+        const actTimeR = 10; // 方向転換時のキー押下1回分の微小回転の繰り返し回数
+        const stepRotRad = actRotRad/actTimeR;
+        let vposi = mobj.position;
+        let vquat = mobj.quaternion;
+        if (kev6actListDelay > 0) {
+            --kev6actListDelay;
+        } else {
+            if (keyEvnt.forwards) {
+                if ((kev6mobj_irot%2) == 0) {
+                    kev6actList.push(['m', -appForce, actTimeM]);
+                    kev6actListDelay = kev6actListDelayIni;
+                } else {
+                    kev6actList.push(['m', -appForceSq2, actTimeM]);
+                    kev6actListDelay = kev6actListDelayIni;
+                }
+            } else if (keyEvnt.backwards) {
+                if ((kev6mobj_irot%2) == 0) {
+                    kev6actList.push(['m', appForce, actTimeMbk]);
+                    kev6actListDelay = kev6actListDelayIni;
+                } else {
+                    kev6actList.push(['m', appForceSq2, actTimeMbk]);
+                    kev6actListDelay = kev6actListDelayIni;
+                }
+            }
+            if (keyEvnt.left) {
+                kev6actList.push(['r', stepRotRad, actTimeR]);
+                kev6actListDelay = kev6actListDelayIni;
+                kev6mobj_irot = (kev6mobj_irot+1)%8;
+            } else if (keyEvnt.right) {
+                kev6actList.push(['r', -stepRotRad, actTimeR]);
+                kev6actListDelay = kev6actListDelayIni;
+                kev6mobj_irot = (kev6mobj_irot+7)%8;
+            }
+        }
+        if (kev6actList.length > 0) {
+            if (mobj.velocity.lengthSquared() > 800) {
+                // 連続して実施するとスピードが乗りすぎる／壁をすり抜けるので、一定速度以上ならスキップ
+                ;
+            } else {
+                let [act, step, times] = kev6actList.shift();
+                if (act == 'm') {
+                    let vv = vquat.vmult(new CANNON.Vec3(step, 0, 0));
+                    mobj.applyImpulse(vv);
+                }
+                if (act == 'r') {
+                    const quatR = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), step);
+                    mobj.quaternion.copy(vquat.mult(quatR));
+                }
+                if (times > 1) {
+                    --times;
+                    kev6actList.unshift([act, step, times]);
+                }
+            }
+        } else {
+            {
+                // vposi をgrid位置の中央位置に移動させる
+                if (mzdata3 != null) {
+                    let step = 5, step_ = step/2;
+                    let ix = Math.round((vposi.x-step_)/step), iz = Math.round((vposi.z-step_)/step);
+                    if (mzdata3.data_[iz][ix] == 1) {
+                        let x0 = (vposi.x-step_)/step, z0 = (vposi.z-step_)/step;
+                        let iixmin = ix, iizmin = iz, lenmin = 9999; // (x0 -ix)**2 + (z0 -iz)**2;
+                        for (let iiz = iz-1; iiz <= iz+1; ++iiz) {
+                            if (iiz < 0 || iiz >= mzdata3.nrow_) {
+                                continue;
+                            }
+                            for (let iix = ix-1; iix <= ix+1; ++iix) {
+                                if (iix < 0 || iix >= mzdata3.ncol_) {
+                                    continue;
+                                }
+                                if (mzdata3.data_[iiz][iix] == 1) {
+                                    continue;
+                                }
+                                let len =  (x0 -iix)**2 + (z0 -iiz)**2;
+                                if (lenmin > len) {
+                                    lenmin = len;
+                                    iixmin = iix;
+                                    iizmin = iiz;
+                                }
+                            }
+                        }
+                        if (lenmin != 9999) {
+                            ix = iixmin;
+                            iz = iizmin;
+                        }
+                    }
+                    let vposiAdj = new CANNON.Vec3(ix*step+step_, vposi.y, iz*step+step_);
+                    let vposiDiff = new CANNON.Vec3((vposiAdj.x-vposi.x)/10, vposi.y, (vposiAdj.z-vposi.z)/10);
+                    mobj.position.set(vposi.x + vposiDiff.x, vposi.y, vposi.z + vposiDiff.z);
+                } else {
+                    // vposi をgrid位置の中央位置に移動させる
+                    let step = 10, step_ = step/2;
+                    let vposiAdj = new CANNON.Vec3(Math.round((vposi.x-step_)/step)*step+step_,
+                                                vposi.y,
+                                                Math.round((vposi.z-step_)/step)*step+step_);
+                    let vposiDiff = new CANNON.Vec3((vposiAdj.x-vposi.x)/10, vposi.y, (vposiAdj.z-vposi.z)/10);
+                    mobj.position.set(vposi.x + vposiDiff.x, vposi.y, vposi.z + vposiDiff.z);
+                }
+                // mobj.velocity = new CANNON.Vec3(0, 0, 0);
+                mobj.angularVelocity = new CANNON.Vec3(0, 0, 0);
+            }
+            {
+                // vquatの Y軸回転を 45度 Math.PI/4 ごとに
+                let veuler = new CANNON.Vec3(0, 0, 0);
+                vquat.toEuler(veuler);
+                const PI4 = Math.PI/4;
+                let mobj_irot = Math.round(veuler.y/PI4);
+                let yadj = mobj_irot*PI4;
+                let addy = (yadj - veuler.y)/10;
+                let quat_ = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), addy);
+                mobj.quaternion.copy(vquat.mult(quat_));
+                kev6mobj_irot = mobj_irot;
+            }
+        }
+        if (keyEvnt.brake) {
+            mobj.applyImpulse(new CANNON.Vec3(0, 1, 0));
+        }
+    }
+
+    let keyEvnetMobj;
+    function changeKeyEvnetMode() {
+        if (keyEventMode == 1) {
+            keyEvnetMobj = keyEvnetMobj_v1;
+        } else if (keyEventMode == 2) {
+            keyEvnetMobj = keyEvnetMobj_v2;
+        } else if (keyEventMode == 3) {
+            keyEvnetMobj = keyEvnetMobj_v3;
+        } else if (keyEventMode == 4) {
+            keyEvnetMobj = keyEvnetMobj_v4;
+        } else if (keyEventMode == 5) {
+            keyEvnetMobj = keyEvnetMobj_v5;
+        } else if (keyEventMode == 6) {
+            keyEvnetMobj = keyEvnetMobj_v6;
+        }
+        {
+            let stext = '';
+            stext += 'Map-' + mapType;
+            stext += ', Key-' + keyEventMode;
+            setLabel(stext);
+        }
+    }
+
+    changeKeyEvnetMode();
+
+
+
     // 初期位置
-    function resetVehiclePosi() {
-        vehicle.setPosition(iniX, iniY, iniZ, iniRotY);
+    function resetMObjPosi() {
+        mobj.position.copy(new CANNON.Vec3(iniX, iniY, iniZ));
+        // 西向きがデフォなので 北向きを 0 になるよう補正(-0.5)
+        let quat = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (iniRotY-0.5)*Math.PI);
+        mobj.quaternion.copy(quat);
 
         camera.position.set(iniX, iniY, iniZ+100);
         camera.lookAt(new THREE.Vector3(iniX, iniY, iniZ));
@@ -1543,9 +2117,11 @@ window.onload = () => {
 
     // ゴールにたどり着く
     function reachToGoal() {
+        kev3actList = [];
+        kev6actList = [];
         incrMapPara();
-        [world, camera, scene, renderer, orbitControls, vehicle] = createWorld();
-        resetVehiclePosi();
+        [world, camera, scene, renderer, orbitControls, mobj, mzdata] = createWorld();
+        resetMObjPosi();
     }
 
 
@@ -1554,144 +2130,103 @@ window.onload = () => {
 
     function animate() {
         if (gamepad.enable_) {
-            // ゲームパッド
-            gamepad.update();
+            // // ゲームパッド
+            // gamepad.update();
 
-            // ステアリング関連
-            if (gamepad.para_.stcLH != 0) {
-                // ステック左：左：cross-Left
-                // ステック左：右：cross-Right
-                vehicle.keydown_ArrowRight2(gamepad.para_.stcLH);
-            } else if (gamepad.para_.crsL) {
-                // 十字左：cross-Left
-                vehicle.keydown_ArrowLeft();
-            } else if (gamepad.para_.crsR) {
-                // 十字右：cross-Right
-                vehicle.keydown_ArrowRight();
-            } else {
-                vehicle.keyup_ArrowLeft();
-            }
-            // アクセル／バック関連
-            if (gamepad.para_.stcRV > 0) {
-                // ステック右：上
-                vehicle.keydown_ArrowUp2(gamepad.para_.stcRV);
-            } else if (gamepad.para_.btnA) {
-                // 前進：button-A
-                vehicle.keydown_ArrowUp();
-            } else if (gamepad.para_.btnY) {
-                // バック：button-Y
-                vehicle.keydown_ArrowDown();
-            } else {
-                vehicle.keyup_ArrowUp();
-            }
-            // ブレーキ関連
-            if (gamepad.para_.stcRV < 0) {
-                // ステック右：下
-                vehicle.keydown_brake2(-gamepad.para_.stcRV);
-            } else if (gamepad.para_.btnB) {
-                vehicle.keydown_brake();
-            } else if (gamepad.para_.btnX) {
-                vehicle.keydown_sidebrakeON();
-            } else {
-                vehicle.keyup_brake();
-            }
-            if (keyChangeCool > 0) {
-                keyChangeCool += -1;
-            } else {
-                if (gamepad.para_.btnRB) {
-                    keyChangeCool = 30;
-                    cameraPosi = (cameraPosi + 1) % 5;
-                }
-                if (gamepad.para_.btnLB) {
-                    keyChangeCool = 30;
-                    cameraPosi = (cameraPosi + 4) % 5;
-                }
-                if (gamepad.para_.btnLT || gamepad.para_.btnRT) {
-                    keyChangeCool = 10;
-                    vehicle.keydown_resetPosture();
-                }
-                if (gamepad.para_.btnLT && gamepad.para_.btnRT) {
-                    keyChangeCool = 30;
-                    initMapPara();
-                    [world, camera, scene, renderer, orbitControls, vehicle] = createWorld();
-                    resetVehiclePosi();
-                }
-                if (gamepad.para_.btnST) {
-                    keyChangeCool = 30;
-                    mapType = (mapType % 6) + 1;
-console.log("mapType=",mapType);
-                    initMapPara();
-                    [world, camera, scene, renderer, orbitControls, vehicle] = createWorld();
-                    resetVehiclePosi();
-                }
-                if (gamepad.para_.btnBK) {
-                    keyChangeCool = 30;
-                    mapType = ((mapType+4) % 6) + 1;
-                    initMapPara();
-                    [world, camera, scene, renderer, orbitControls, vehicle] = createWorld();
-                    resetVehiclePosi();
-                }
-            }
+            // // ステアリング関連
+            // if (gamepad.para_.stcLH != 0) {
+            //     // ステック左：左：cross-Left
+            //     // ステック左：右：cross-Right
+            //     vehicle.keydown_ArrowRight2(gamepad.para_.stcLH);
+            // } else if (gamepad.para_.crsL) {
+            //     // 十字左：cross-Left
+            //     vehicle.keydown_ArrowLeft();
+            // } else if (gamepad.para_.crsR) {
+            //     // 十字右：cross-Right
+            //     vehicle.keydown_ArrowRight();
+            // } else {
+            //     vehicle.keyup_ArrowLeft();
+            // }
+            // // アクセル／バック関連
+            // if (gamepad.para_.stcRV > 0) {
+            //     // ステック右：上
+            //     vehicle.keydown_ArrowUp2(gamepad.para_.stcRV);
+            // } else if (gamepad.para_.btnA) {
+            //     // 前進：button-A
+            //     vehicle.keydown_ArrowUp();
+            // } else if (gamepad.para_.btnY) {
+            //     // バック：button-Y
+            //     vehicle.keydown_ArrowDown();
+            // } else {
+            //     vehicle.keyup_ArrowUp();
+            // }
+            // // ブレーキ関連
+            // if (gamepad.para_.stcRV < 0) {
+            //     // ステック右：下
+            //     vehicle.keydown_brake2(-gamepad.para_.stcRV);
+            // } else if (gamepad.para_.btnB) {
+            //     vehicle.keydown_brake();
+            // } else if (gamepad.para_.btnX) {
+            //     vehicle.keydown_sidebrakeON();
+            // } else {
+            //     vehicle.keyup_brake();
+            // }
+            // if (keyChangeCool > 0) {
+            //     keyChangeCool += -1;
+            // } else {
+            //     if (gamepad.para_.btnRB) {
+            //         keyChangeCool = 30;
+            //         cameraPosi = (cameraPosi + 1) % 5;
+            //     }
+            //     if (gamepad.para_.btnLB) {
+            //         keyChangeCool = 30;
+            //         cameraPosi = (cameraPosi + 4) % 5;
+            //     }
+            //     if (gamepad.para_.btnLT || gamepad.para_.btnRT) {
+            //         keyChangeCool = 10;
+            //         vehicle.keydown_resetPosture();
+            //     }
+            //     if (gamepad.para_.btnLT && gamepad.para_.btnRT) {
+            //         keyChangeCool = 30;
+            //         initMapPara();
+            //         [world, camera, scene, renderer, orbitControls, mobjo, mzdata] = createWorld();
+            //         resetMObjPosi();
+            //     }
+            //     if (gamepad.para_.btnST) {
+            //         keyChangeCool = 30;
+            //         mapType = (mapType % 6) + 1;
+            //         initMapPara();
+            //         [world, camera, scene, renderer, orbitControls, mobjo, mzdata] = createWorld();
+            //         resetMObjPosi();
+            //     }
+            //     if (gamepad.para_.btnBK) {
+            //         keyChangeCool = 30;
+            //         mapType = ((mapType+4) % 6) + 1;
+            //         initMapPara();
+            //         [world, camera, scene, renderer, orbitControls, mobjo, mzdata] = createWorld();
+            //         resetMObjPosi();
+            //     }
+            // }
 
         } else {
             // key
-            // 車関連(押しっぱなし／同時押しの key-event処理) ?
-            if (keyEvnt.forwards) {
-                vehicle.keydown_ArrowUp();
-            } else if (keyEvnt.backwards) {
-                vehicle.keydown_ArrowDown();
-            } else {
-                vehicle.keyup_ArrowUp();
-            }
-            if (keyEvnt.left) {
-                vehicle.keydown_ArrowLeft();
-            } else if (keyEvnt.right) {
-                vehicle.keydown_ArrowRight();
-            } else {
-                vehicle.keyup_ArrowLeft();
-            }
-            if (keyEvnt.brake) {
-                vehicle.keydown_brake();
-            } else if (keyEvnt.sidebrake) {
-                vehicle.keydown_sidebrake();
-            } else {
-                vehicle.keyup_brake();
-            }
+            keyEvnetMobj(keyEvnt, mobj);
         }
 
         world.step(timeStep)
 
-        // slopetoy
-        for (let ii = 0; ii < srclist.length; ++ii) {
-            let src = srclist[ii];
-            for (let i = 0; i < src.moBallBodyVec_.length; ++i) {
-                // 場外判定
-                if (src.moBallBodyVec_[i].position.y < -100) {
-                    src.repop(src.moBallBodyVec_[i]);
-                }
-                // 停止判定
-                if (src.moBallBodyVec_[i].velocity.lengthSquared() < 0.01) {
-                    src.repop(src.moBallBodyVec_[i]);
-                }
-            }
-            src.pop();
-        }
-
-        // 車関連
-        vehicle.viewUpdate();
-
         // カメラ・視点 関連
-        let chassisBody = vehicle.getModel().chassisBody;
-        let vposi = chassisBody.position;
-        let vquat = chassisBody.quaternion;
+        let vposi = mobj.position;
+        let vquat = mobj.quaternion;
 
         if (cameraPosi == 0) {
             // 後背からビュー / 車の後方位置から正面に向けて
-            // let vv = vquat.vmult(new CANNON.Vec3(23, 5, 0));  // 後方、高さ、左右
-            let vv = vquat.vmult(new CANNON.Vec3(9, 1.5, 0));  // 後方、高さ、左右
+            let vv = vquat.vmult(new CANNON.Vec3(9, 2, 0));  // 後方、高さ、左右
             camera.position.set(vposi.x + vv.x, vposi.y + vv.y, vposi.z + vv.z);
             camera.rotation.z = 0;
-            camera.lookAt(new THREE.Vector3(vposi.x, vposi.y, vposi.z));
+            // camera.lookAt(new THREE.Vector3(vposi.x, vposi.y, vposi.z));
+            let vv2 = vquat.vmult(new CANNON.Vec3(-10, 0, 0));  // 前方、高さ、左右
+            camera.lookAt(new THREE.Vector3(vposi.x + vv2.x, vposi.y + vv2.y, vposi.z + vv2.z));
         } else if (cameraPosi == 1) {
             // フロントビュー（ドライバー視点) / 車の中心位置から正面に向けて
             camera.position.copy(new THREE.Vector3(vposi.x, vposi.y+2, vposi.z));
@@ -1706,7 +2241,6 @@ console.log("mapType=",mapType);
             vquat.toEuler(veuler);
             let viecleRotY = veuler.y + Math.PI / 2;  // X軸負の方向を向いて作成したので、上を向くよう90度ずらす
             camera.rotation.z = viecleRotY;
-
         } else if (cameraPosi == 3) {
             // // カスタムなの自動回転
             orbitControls.autoRotate = true;
@@ -1720,12 +2254,6 @@ console.log("mapType=",mapType);
             orbitControls.update();
         }
 
-        {
-            let speed = vehicle.getSpeed();
-            speed = parseInt(speed*10)/10.0;
-            setSpeed(speed);
-        }
-
         renderer.render(scene, camera)
         requestAnimationFrame(animate)
     }
@@ -1733,7 +2261,7 @@ console.log("mapType=",mapType);
     animate();
 };
 
-function setSpeed(speed) {
+function setLabel(text) {
     const canvas = document.getElementById('canvas2d');
     const ctxspd = canvas.getContext('2d');
     canvas.width = 200; // window.innerWidth;
@@ -1742,5 +2270,5 @@ function setSpeed(speed) {
     ctxspd.textBaseline = 'alphabetic';
     ctxspd.textAlign = 'start';
     ctxspd.fillStyle = 'white';
-    ctxspd.fillText("speed: "+speed, 20, 22);
-};
+    ctxspd.fillText(text, 20, 22);
+}
