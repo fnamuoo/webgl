@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three"          : "./js/three@0.165.0/three.module.js",
+        "orbitcontrols"  : "./js/three@0.165.0/OrbitControls.js",
+        "cannon"         : "./js/cannon-es@0.20.0/cannon-es.min.js",
+        "VehicleBase"    : "./VehicleBase.js",
+        "Gamepad"        : "./Gamepad.js",
+        "Maze2"          : "./Maze2.js"
+      }
+    }
+  </script>
+  <script type="module" src="054.js"></script>
+</head>
+<body>
+<canvas id="myCanvas" ></canvas>
+<canvas id="canvas2d" style="position:fixed; bottom:20px; left:0px; width:150px; height:40px; z-index: 100; background-color:rgba(0,0,255, 0.2);">foo</canvas>
+<canvas id="canvas2d2" style="position:fixed; bottom:20px; right:20px; width:150px; height:40px; z-index: 101; background-color:rgba(0,255,0, 0.2);">foo</canvas>
+</body>
+</html>
