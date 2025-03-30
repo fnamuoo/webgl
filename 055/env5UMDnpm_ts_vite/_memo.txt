@@ -1,0 +1,57 @@
+(try)
+
+  - setup コマンド（初回のみ）
+
+    ```sh
+    # 事前に nodejs インストール
+    # 作業したいフォルダを作成して、そこに移動
+    npm i vite                     (i は install の略)
+    npm i babylonjs
+
+    # npm i -D babylonjs
+    # npm i -D babylonjs/core       (-Dは --save-dev の略です)
+    # npm i -D babylonjs/inspector
+
+    ```
+    ref) モジュールに関して下記が参考になりそう
+         https://doc.babylonjs.com/setup/frameworkPackages/es6Support
+
+  - setup コマンド（新規プロジェクト開始時）
+
+    ```sh
+    npm init vite
+    << プロジェクト名： test1
+    << Vanilla    を選択
+    << TypeScript を選択
+    # サブフォルダに移動
+    cd test1
+    npm i
+    npm run dev
+    >> 成功したら "Hello Vite!"が表示される(「count」 クリックで数値が増加)
+    ```
+
+    http://localhost:5173/
+
+    -babylon のサンプルコード
+
+    src, public の中のファイルをすべて削除
+
+    arc/app.ts
+    <<
+     https://doc.babylonjs.com/guidedLearning/usingVite/
+
+    ./index.html を書き換え
+
+
+  - 開発・ソース更新時
+
+    ```sh
+    npm run dev
+    ```
+
+  - リリース
+
+    ```sh
+    npm run build
+    >> dist の html,js を配布 (html内のjsパス修正を推奨)
+    ```

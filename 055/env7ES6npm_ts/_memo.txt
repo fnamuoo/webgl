@@ -1,0 +1,60 @@
+https://doc.babylonjs.com/setup/frameworkPackages/es6Support/
+
+ここの最初のリンク git から
+babylonjs-webpack-es6-master.zip
+を取得展開
+
+中のreadme より
+
+npm install
+npm start
+http://localhost:8080
+
+
+テスト
+npm run test:visuals
+validation.spec.ts
+
+npm run test:unit
+FILENAME.unit.spec.ts
+
+
+デプロイ／リリースは
+npm run build
+
+いくつか createScene のサンプル(src/scenes/*.ts)がある。
+
+------------------------------------------------------------
+最初に1回
+npm install
+
+実行は
+npm start
+ >> テクスチャの床　と　球
+
+
+----------------------------------------
+物理演算(Havok)の例(床と上空にある球)に切り替える場合
+
+  >> 白い床　と　上空にある球
+
+```js
+//src/createScene.ts
+
+import { DefaultSceneWithTexture } from "./scenes/defaultWithTexture";
+...
+export const getSceneModule = (): CreateSceneClass => {
+    return new DefaultSceneWithTexture();
+}
+
+----------------------------------------
+import { PhysicsSceneWithHavok } from "./scenes/physicsWithHavok";
+
+...
+export const getSceneModule = (): CreateSceneClass => {
+    return new PhysicsSceneWithHavok();
+}
+
+```
+
+

@@ -1,0 +1,20 @@
+色々なBabylon.jsプロジェクトを作ってみた
+https://note.com/shigenobu_kondo/n/n4c80203451ca
+
+https://github.com/mininobu/babylonjs-blank-projects/tree/main/babylon-npm
+が参考になる
+
+babylon-npm 以下のソースをコピーして
+
+npm install
+
+npm run start
+# コマンドは package.json を確認
+
+
+------------------------------
+package.json から実行コマンドを推察
+
+npm install babylonjs babylonjs-gui babylonjs-loaders webpack webpack-cli
+npm install -D webpack-dev-server copy-webpack-plugin write-file-webpack-plugin
+

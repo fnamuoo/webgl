@@ -1,0 +1,110 @@
+ライブラリを自前で用意する版
+
+本家の git  からソースをコンパイルして作成されたものを配置..かな
+
+
+--------------------
+gitソースのコンパイル手順
+
+- nodejs(npm) をインストール／最新版に更新
+
+  - 公式にアクセス .msi をDLしてインストール(上書き)
+
+    https://nodejs.org/ja/download/
+
+    ```
+    # PowerShell でバージョン確認
+    node -v
+    v22.14.0
+    npm -v
+    10.9.2
+    ```
+
+
+- git からソース(zip)をダウンロード
+
+  - バージョン：Release 463  v7.54.0  2025/03/20 
+
+    https://github.com/BabylonJS/Babylon.js
+
+- zip を展開、root で "npm install"
+
+  ```
+  npm install
+  ```
+
+- コンパイル
+
+  ```
+  ## これだけでよいっぽい
+  npm run build:dev
+  ## (最初にこれを実行してしまったけど..)
+  npm run build:umd
+  ## 
+  npm run build:babylonjs
+  ```
+
+- 動作確認
+
+  ```
+  npm run start
+  ```
+
+  ブラウザで http://localhost:1337/ にアクセス。人形が表示される。
+
+- ローカルでツール起動
+
+  - PlayGroundを起動
+
+    PowerShell で２つウィンドウを開いて
+
+    ```
+    npm run serve -w @tools/babylon-server
+    npm run serve -w @tools/playground
+    ```
+
+    http://localhost:1338/ にアクセス。  
+    ※保存はローカルではなく、クラウド（外部）っぽい。
+
+  - Sandboxを起動
+
+    ```
+    npm run serve -w @tools/babylon-server
+    npm run serve -w @tools/sandbox
+    ```
+
+    http://localhost:1339/
+
+  - Node Editorを起動
+
+    ```
+    npm run serve -w @tools/babylon-server
+    npm run serve -w @tools/node-editor
+    ```
+
+    http://localhost:1340/
+
+    それとも、、どれが正解？
+
+    ```
+    npm run serve -w @tools/node-geometry-editor
+    ```
+
+    http://localhost:1343/
+
+
+    ```
+    npm run serve -w @tools/node-render-graph-editor
+    ```
+
+    http://localhost:1344/
+
+  - GUI Editorを起動
+
+    ```
+    npm run serve -w @tools/babylon-server
+    npm run serve -w @tools/gui-editor
+    ```
+
+    http://localhost:1341/
+
