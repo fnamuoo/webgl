@@ -15,7 +15,7 @@ https://playground.babylonjs.com/full.html#8ZZ8P0#1
 
 ソース
 
-https://github.com/fnamuoo/webgl/blob/main/064
+https://github.com/fnamuoo/webgl/blob/main/065
 
 ローカルで動かす場合、 ./js 以下のライブラリは 057/js を利用してください。
 
