@@ -2,19 +2,19 @@
 
 ## この記事のスナップショット
 
-![](068/pic/068_ss_61.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/79b96ec277d6-20250504.jpg)
 
 船の軌跡＋water material  
-https://playground.babylonjs.com/full.html#8ZZ8P0#1
+https://playground.babylonjs.com/full.html#M5IZ89
 
 ロケット発射時の煙  
-https://playground.babylonjs.com/full.html#8ZZ8P0#1
+https://playground.babylonjs.com/full.html#M5IZ89#1
 
 滝（１）  
-https://playground.babylonjs.com/full.html#8ZZ8P0#1
+https://playground.babylonjs.com/full.html#M5IZ89#2
 
 滝（２）  
-https://playground.babylonjs.com/full.html#8ZZ8P0#1
+https://playground.babylonjs.com/full.html#M5IZ89#3
 
 （コードを見たい人はURLから `full.html` を消したURLを指定してください）
 
@@ -46,12 +46,8 @@ https://github.com/fnamuoo/webgl/blob/main/068
 
 ### 潜水艦のバブル
 
-水中の潜水艦の全体から静かに気泡をだすイメージで。
-いや、うん、潜水艦でこんなに泡立てたらダメな気がする。敵に発見される意味で。
-
-色は水中ということで青みの色を採用し、
-メッシュにあわせてカプセル形状で放出します。
-泡が上昇するように上向きの gravity をかけてます。
+水中の潜水艦の全体から静かに気泡をだすイメージで。いや、うん、潜水艦でこんなに泡立てたらダメな気がする。敵に発見される意味で。
+色は水中ということで青みの色を採用し、メッシュにあわせてカプセル形状で放出します。泡が上昇するように上向きの gravity をかけてます。
 
 ```js
 // カプセルから気泡を静かに出す..
@@ -75,15 +71,12 @@ particleSystem.start();
 ```
 
 潜水艦のバブル  
-![](068/pic/068_ss_11.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/0cc8f443ccc6-20250504.jpg)
 
 ### 船の軌跡
 
 船の移動したあとの軌跡を particle で表現してみました。
-
-放出位置はキャラクターコントローラーの下部を相対位置で指定します。
-また粒子は水平方向のみに移動するよう direction を指定しつつ、
-長い軌跡を出したいので LifeTime をちょっと長めにしてます。
+放出位置はキャラクターコントローラーの下部を相対位置で指定します。また粒子は水平方向のみに移動するよう direction を指定しつつ、長い軌跡を出したいので LifeTime をちょっと長めにしてます。
 
 ```js
 // 船の軌跡っぽく
@@ -118,20 +111,14 @@ groundMesh.material.diffuseTexture = new BABYLON.Texture("textures/waterbump.png
 ```
 
 船の軌跡  
-![](068/pic/068_ss_21.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/07efe4470f96-20250504.jpg)
 
 ### 船の軌跡＋water material
 
-上述では床にテクスチャを貼るだけの「なんちゃって水面」でしが、
-babylonjs には water material があるのでこちらを使ってみました。
-
+上述では床にテクスチャを貼るだけの「なんちゃって水面」でしが、babylonjs には water material があるのでこちらを使ってみました。
 公式の[サンプルコード](https://playground.babylonjs.com/#1SLLOJ#18)そのままコピペして WaterMaterial を作成します。
-
 そのままだと落下するので別途地面(ground)を配置してます。
-
-いざ動かしてみるとずっぽり沈み、ジャンプすると水面から飛び出ます。
-水面の高さが問題だと気づいてwaveHeight,bumpHeightを低く変更。
-まだ水面が浅いところと深いところがありますが、まぁ水面を走っている感じに調整できました。
+いざ動かしてみるとずっぽり沈み、ジャンプすると水面から飛び出ます。水面の高さが問題だと気づいてwaveHeight,bumpHeightを低く変更。まだ水面が浅いところと深いところがありますが、まぁ水面を走っている感じに調整できました。
 
 ```js
 // skybox と組み合わせたウォーターマテリアル
@@ -167,22 +154,14 @@ groundMesh.material.minorUnitVisibility  = 0;
 var groundAggregate = new BABYLON.PhysicsAggregate(groundMesh, BABYLON.PhysicsShapeType.BOX, { mass: 0, restitution:0.3}, scene);
 ```
 
-![](068/pic/068_ss_32x2.gif)
+![](https://storage.googleapis.com/zenn-user-upload/2d6532e3db10-20250504.gif)
 
-ちなみに波の高さを変更せずに地面の高さを調整していたとき、
-「水面の深いところと浅いところがある！」「下の地面が見えて、水面が満ち引きしている！」
-と思ったのですが波の影響でメッシュが上下しているだけでした。on_
-
-うーん、荒波（波が高いとき）に船を浮かべるにはどうしたらいんでしょうね？
-メッシュの交差判定をして水面位置を求めるのかな？ちょっと保留で。
+ちなみに波の高さを変更せずに地面の高さを調整していたとき、「水面の深いところと浅いところがある！」「下の地面が見えて、水面が満ち引きしている！」と思ったのですが波の影響でメッシュが上下しているだけでした。on_
+うーん、荒波（波が高いとき）に船を浮かべるにはどうしたらいんでしょうね？メッシュの交差判定をして水面位置を求めるのかな？ちょっと保留で。
 
 ### ロケット発射時の煙
 
-ロケット発射を模した演出をします。
-タイミングよくスペースでジャンプすると、ロケット気分になれます。ちょっと楽しいです。
-
-３秒後に発射台からの煙を模したpartcleを発生させますがその１秒後に停止させます。
-本体からは3.5秒後に噴出の演出を開始します。
+ロケット発射を模した演出をします。タイミングよくスペースでジャンプすると、ロケット気分になれます。ちょっと楽しいです。３秒後に発射台からの煙を模したpartcleを発生させますがその１秒後に停止させます。本体からは3.5秒後に噴出の演出を開始します。
 
 ```js
 // ロケットの発射時の煙っぽく
@@ -223,22 +202,17 @@ particleSystem3.maxLifeTime = 3;
 particleSystem3.start(3500);
 ```
 
-![](068/pic/068_ss_41.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/197747dda45b-20250504.jpg)
 
 （２倍速）  
-![](068/pic/068_ss_42x2.gif)
+![](https://storage.googleapis.com/zenn-user-upload/b20df23d8d95-20250504.gif)
 
 ### 滝（１）
 
 画像は[いらすとや](https://www.irasutoya.com/)さんから
-
-画像は plane に張り付けて、絵に合わせて水を落とします。
-このとき滝の裏側を通れるように、手前に飛ばすように水を落とします。
-
+画像は plane に張り付けて、絵に合わせて水を落とします。このとき滝の裏側を通れるように、手前に飛ばすように水を落とします。
 また滝つぼから上がる水煙を時間差で発生させます。
-
-画像が暗かったので照明を追加したほか、
-画面手前に足場を作り、高所から見れるようにしてます。
+画像が暗かったので照明を追加したほか、画面手前に足場を作り、高所から見れるようにしてます。
 滝の全景を見たい方はこちら（足場）からどうぞ。
 
 ```js
@@ -294,12 +268,12 @@ particleSystem2.gravity = new BABYLON.Vector3(0, 1, 0);
 ```
 
 滝（１）  
-![](068/pic/068_ss_51.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/44cf36cffaea-20250504.jpg)
 
 滝の裏側（裏見の滝）はこんな感じ
 
 滝（１）の裏側  
-![](068/pic/068_ss_52.jpg)
+![](https://storage.googleapis.com/zenn-user-upload/e10267f858f2-20250504.jpg)
 
 ### 滝（２）
 
@@ -360,34 +334,13 @@ particleSystem2.start(7500);
 ```
 
 滝（２）（２倍速）  
-![](068/pic/068_ss_62x2.gif)
+![](https://storage.googleapis.com/zenn-user-upload/9815bdd2620c-20250504.gif)
 
 ## まとめ・雑感
 
-「船の軌跡」で、移動したあとに泡？が残るのは良いとして、波が立っていない。
-「船首が水を切ると水面には波が立つ」ことを忘れてました。むむぅ、奥深い。
-魚雷ならありかな。もうちょっと考えたいところ。
+「船の軌跡」で、移動したあとに泡？が残るのは良いとして、波が立っていない。「船首が水を切ると水面には波が立つ」ことを忘れてました。むむぅ、奥深い。魚雷ならありかな。もうちょっと考えたいところ。
 
-water material は使いどころが難しいですね。
-でも「波」はちょっと魅力。高さ固定で船を浮かべてしまいたくなります。
+water material は使いどころが難しいですね。でも「波」はちょっと魅力。高さ固定で船を浮かべてしまいたくなります。
 
-「滝」はちょっと楽しかった。しかし見入っちゃいますね。マイナスイオンがでてるのかな？
-滝つぼからの水煙のタイミングを頑張ってみました。読者さんの再生環境でタイミングあっていると良いけど、、、
+「滝」はちょっと楽しかった。しかし見入っちゃいますね。マイナスイオンがでてるのかな？滝つぼからの水煙のタイミングを頑張ってみました。読者さんの再生環境でタイミングあっていると良いけど、、、
 
-
-------------------------------------------------------------
-
-前の記事：[Babylon.js の基礎調査：軌跡つくる（TrailMesh／ParticleSystem）](067.md)
-
-次の記事：..
-
-
-目次：[目次](000.md)
-
-この記事には次の関連記事があります。
-
-- [Babylon.js の基礎調査：軌跡つくる（TrailMesh／ParticleSystem）](067.md)
-- [Babylon.js の基礎調査：ParticleSystemを深掘り](068.md)
-
-
---
