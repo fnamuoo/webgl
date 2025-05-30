@@ -1,15 +1,13 @@
 // Crowd Navigation System(CNS)のエージェントとマイクロマウスの迷路で競争
 // - エージェントとキャラクターコントローラーで競争
 
+// for local
 const SCRIPT_URL1 = "./Maze.js";
-// const SCRIPT_URL1 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/075/Maze.js";
-let Maze = null;
-import(SCRIPT_URL1).then((obj) => { Maze = obj; console.log("maze=",obj); });
-
 const SCRIPT_URL2 = "./MazeData.js";
-// const SCRIPT_URL2 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/075/MazeData.js";
-let MazeData = null;
-import(SCRIPT_URL2).then((obj) => { MazeData = obj; console.log("mazeData=",obj); });
+
+// for PlayGround
+// const SCRIPT_URL1 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/075/Maze.js";
+// const SCRIPT_URL2 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/075/MazeData.js";
 
 // 多次元配列用のシャッフル
 const shuffle2 = (arr) =>
@@ -17,7 +15,13 @@ const shuffle2 = (arr) =>
     .sort((a, b) => a.random - b.random)
     .map(({ value }) => value);
 
-var createScene = function () {
+var createScene = async function () {
+    let Maze = null;
+    let MazeData = null;
+    import(SCRIPT_URL1).then((obj) => { Maze = obj; console.log("obj=",obj);});
+    import(SCRIPT_URL2).then((obj) => { MazeData = obj; console.log("obj=",obj);});
+    await BABYLON.InitializeCSG2Async();
+
     var scene = new BABYLON.Scene(engine);
 
     const camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -10), scene);
@@ -489,14 +493,14 @@ var createScene = function () {
     let advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
     let guiLabelRect = new BABYLON.GUI.Rectangle();
     guiLabelRect.adaptWidthToChildren = true;
-    guiLabelRect.height = "130px";
+    guiLabelRect.height = "150px";
     guiLabelRect.cornerRadius = 5;
     guiLabelRect.color = "Orange";
     guiLabelRect.thickness = 4;
     guiLabelRect.background = "green";
     advancedTexture.addControl(guiLabelRect);    
     let text1 = new BABYLON.GUI.TextBlock();
-    text1.text = "Usage:\n(W,S) or (Arrow UP/DOWN): Forward/Back\n(A,D) or (Arrow Left/Right): turn Left/Right\n(Space): jump\nC: change Camera\nN: Next stage\nH: show/hide this message";
+    text1.text = "Usage:\n(W,S) or (Arrow UP/DOWN): Forward/Back\n(A,D) or (Arrow Left/Right): turn Left/Right\n(Space): jump\n(Enter): Game Start\nC: change Camera\nN: Next stage\nH: show/hide this message";
     text1.color = "white";
     text1.width = "260px";
     text1.fontSize = 12;

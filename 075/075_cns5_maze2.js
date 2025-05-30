@@ -1,15 +1,13 @@
 // Crowd Navigation System(CNS)のエージェントとマイクロマウスの迷路で競争
 // - エージェントの迷路踏破（複数経路）
 
+// for local
 const SCRIPT_URL1 = "./Maze.js";
-// const SCRIPT_URL1 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/075/Maze.js";
-let Maze = null;
-import(SCRIPT_URL1).then((obj) => { Maze = obj; console.log("maze=",obj); });
-
 const SCRIPT_URL2 = "./MazeData.js";
-// const SCRIPT_URL2 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/075/MazeData.js";
-let MazeData = null;
-import(SCRIPT_URL2).then((obj) => { MazeData = obj; console.log("mazeData=",obj); });
+
+// for PlayGround
+// const SCRIPT_URL1 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/075/Maze.js";
+// const SCRIPT_URL2 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/075/MazeData.js";
 
 // 多次元配列用のシャッフル
 const shuffle2 = (arr) =>
@@ -17,7 +15,13 @@ const shuffle2 = (arr) =>
     .sort((a, b) => a.random - b.random)
     .map(({ value }) => value);
 
-var createScene = function () {
+var createScene = async function () {
+    let Maze = null;
+    let MazeData = null;
+    import(SCRIPT_URL1).then((obj) => { Maze = obj; console.log("obj=",obj);});
+    import(SCRIPT_URL2).then((obj) => { MazeData = obj; console.log("obj=",obj);});
+    await BABYLON.InitializeCSG2Async();
+
     var scene = new BABYLON.Scene(engine);
 
     var camera = new BABYLON.ArcRotateCamera("Camera", 0,0,0, new BABYLON.Vector3(2, 5,-10), scene);
