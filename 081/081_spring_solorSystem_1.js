@@ -12,8 +12,8 @@ const txt_tail_bubble = "../068/textures/flare3.png";
 // for PlayGround
 // const txt_mercury = "textures/waterbump.png";
 // const txt_earth = "textures/earth.jpg";
-// const txt_moon = "textures/Moon_texture.jpg";
-// const txt_jupiter = "textures/jupitermap.jpg"; // https://planetpixelemporium.com/jupiter.html
+// const txt_moon    = "https://raw.githubusercontent.com/fnamuoo/webgl/main/081/textures/Moon_texture.jpg";
+// const txt_jupiter = "https://raw.githubusercontent.com/fnamuoo/webgl/main/081/textures/jupitermap.jpg";
 // const txt_comet1 = "textures/floor.png";
 // const txt_comet2 = "textures/grass.png";
 // const txt_tail_bubble = "textures/flare3.png";

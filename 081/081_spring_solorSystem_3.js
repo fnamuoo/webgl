@@ -8,8 +8,6 @@ const txt_tail_bubble = "../068/textures/flare3.png";
 
 // for PlayGround
 // const txt_tail_bubble = "textures/flare3.png";
-
-
     
 var createScene = async function () {
     var scene = new BABYLON.Scene(engine);
