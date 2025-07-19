@@ -9,7 +9,10 @@ https://playground.babylonjs.com/full.html#R5OR11#3
 
 （コードを見たい人はURLから `full.html` を消したURLを指定してください）
 
-[ソース](083/)
+ソース
+
+https://github.com/fnamuoo/webgl/blob/main/083
+
 - 083_car1_wheel  .. ホイール（テスト）
 - 083_car2_draft  .. RigidCar（テスト）
 - 083_car3_rigidCar .. RigidCar
