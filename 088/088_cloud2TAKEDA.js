@@ -3,7 +3,6 @@
 // https://maps.qchizu.xyz/#15/35.300/134.829/&base=ort&ls=ort&disp=1&vs=c1g1j0h0k0l0u0t0z0r0s0m0f1&d=m
 // の3Dオブジェクトに雲（雲海）を追加してみる
 
-const R90 = Math.PI/2;
 const R180 = Math.PI;
 
 const txt_tail_bubble = "textures/cloud.png";
