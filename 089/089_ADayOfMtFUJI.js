@@ -1,7 +1,8 @@
 // 富士山の一日
 
 //let skyboxTextPath = "textures/TropicalSunnyDay";
-let skyboxTextPath = "../069/textures/TropicalSunnyDay";
+//let skyboxTextPath = "../069/textures/TropicalSunnyDay";
+let skyboxTextPath = "textures/TropicalSunnyDay";
 
 const R180 = Math.PI;
 const R360 = Math.PI*2;
@@ -26,8 +27,10 @@ var createScene = async function () {
 
     // --------------------------------------------------
     if (1) {
-        let files = ["./mtFUJI/dem.obj",
-                     ];
+        let files = [
+            //"./mtFUJI/dem.obj",
+            "https://raw.githubusercontent.com/fnamuoo/webgl/main/089/mtFUJI/dem.obj",
+        ];
         for (let file of files) {
             BABYLON.ImportMeshAsync(file, scene).then((result) => {
                 let meshGeo = result.meshes[0];
