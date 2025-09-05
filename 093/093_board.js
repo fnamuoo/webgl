@@ -37,7 +37,7 @@ const water_bump_path = "../068/textures/waterbump.png";
 const txt_tail_bubble = "../068/textures/flare3.png";
 
 // for PlayGround
-// const SCRIPT_URL1 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/075/Maze.js";
+// const SCRIPT_URL1 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/090/CourseData.js";
 // const charPathList = ["https://raw.githubusercontent.com/fnamuoo/webgl/main/093/textures/pipo-charachip007.png",
 //                       "https://raw.githubusercontent.com/fnamuoo/webgl/main/093/textures/pipo-charachip008b.png",
 //                       "https://raw.githubusercontent.com/fnamuoo/webgl/main/093/textures/pipo-charachip010.png",
