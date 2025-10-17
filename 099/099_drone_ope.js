@@ -51,14 +51,44 @@ const SCRIPT_URL1 = "../090/CourseData.js";
 const myTextPath = "../096/textures/pipo-charachip007_.png"; // 男の子
 const lineArrowPath = 'textures/arrow_.png';
 const goalPath ="../078/textures/amiga.jpg";
+const iconPath1 = "textures/icon_question.png";
+const iconPath2 = "textures/icon_gear2.png";
+const iconPath3 = "textures/icon_golf6.png";
+const courseInfoList = [
+    ["MotegiSuperSpeedway", "pic/099_ss_100.jpg"],
+    ["DaytonaSpeedway", "pic/099_ss_101.jpg"],
+    ["HighSpeedRing", "pic/099_ss_102.jpg"],
+    ["Random(2D)", "pic/099_ss_103.jpg"],
+    ["AutumnRing", "pic/099_ss_104.jpg"],
+    ["Suzuka", "pic/099_ss_105.jpg"],
+    ["Robotrace_2024_KANSAI", "pic/099_ss_106.jpg"],
+    ["Robotrace_2024_CHUBU", "pic/099_ss_107.jpg"],
+    ["Robotrace_2024_Champ", "pic/099_ss_108.jpg"],
+    ["Random(3D)", "pic/099_ss_109.jpg"],
+];
 
 
 // --------------------------------------------
 // for PlayGround
-// const SCRIPT_URL1 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/090/CourseData.js";
+// const SCRIPT_URL1 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/090/CourseData.js";
 // const myTextPath = "https://raw.githubusercontent.com/fnamuoo/webgl/main/096/textures/pipo-charachip007_.png"; // 男の子
-// const lineArrowPath = 'textures/arrow_.png';
-// const goalPath ="https://raw.githubusercontent.com/fnamuoo/webgl/main/078/textures/amiga.jpg";
+// const lineArrowPath = 'https://raw.githubusercontent.com/fnamuoo/webgl/main/099/textures/arrow_.png';
+// const goalPath ="textures/amiga.jpg";
+// const iconPath1 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/textures/icon_question.png";
+// const iconPath2 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/textures/icon_gear2.png";
+// const iconPath3 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/textures/icon_golf6.png";
+// const courseInfoList = [
+//     ["MotegiSuperSpeedway", "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/pic/099_ss_100.jpg"],
+//     ["DaytonaSpeedway", "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/pic/099_ss_101.jpg"],
+//     ["HighSpeedRing", "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/pic/099_ss_102.jpg"],
+//     ["Random(2D)", "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/pic/099_ss_103.jpg"],
+//     ["AutumnRing", "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/pic/099_ss_104.jpg"],
+//     ["Suzuka", "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/pic/099_ss_105.jpg"],
+//     ["Robotrace_2024_KANSAI", "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/pic/099_ss_106.jpg"],
+//     ["Robotrace_2024_CHUBU", "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/pic/099_ss_107.jpg"],
+//     ["Robotrace_2024_Champ", "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/pic/099_ss_108.jpg"],
+//     ["Random(3D)", "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/pic/099_ss_109.jpg"],
+// ];
 
 
 // ======================================================================
@@ -888,7 +918,7 @@ const createScene = async function () {
     }
 
     // 画面左上。Ｑボタン
-    var guiIconUsage = new BABYLON.GUI.Image("ctrl", "textures/icon_question.png");
+    var guiIconUsage = new BABYLON.GUI.Image("ctrl", iconPath1);
     {
         guiIconUsage.width = "60px";
         guiIconUsage.height = "60px";
@@ -1068,7 +1098,7 @@ const createScene = async function () {
     }
 
     // 画面右上。歯車ボタン
-    var guiIconSetting = new BABYLON.GUI.Image("ctrl", "textures/icon_gear2.png");
+    var guiIconSetting = new BABYLON.GUI.Image("ctrl", iconPath2);
     {
         guiIconSetting.width = "60px";
         guiIconSetting.height = "60px";
@@ -1127,17 +1157,6 @@ const createScene = async function () {
             return result;
         };
         //
-        let courseInfoList = [["MotegiSuperSpeedway", "pic/099_ss_100.jpg"],
-                              ["DaytonaSpeedway", "pic/099_ss_101.jpg"],
-                              ["HighSpeedRing", "pic/099_ss_102.jpg"],
-                              ["Random(2D)", "pic/099_ss_103.jpg"],
-                              ["AutumnRing", "pic/099_ss_104.jpg"],
-                              ["Suzuka", "pic/099_ss_105.jpg"],
-                              ["Robotrace_2024_KANSAI", "pic/099_ss_106.jpg"],
-                              ["Robotrace_2024_CHUBU", "pic/099_ss_107.jpg"],
-                              ["Robotrace_2024_Champ", "pic/099_ss_108.jpg"],
-                              ["Random(3D)", "pic/099_ss_109.jpg"],
-                             ];
         for (let ii=0; ii<courseInfoList.length; ++ii) {
             let [label, fpath] = courseInfoList[ii]
             let button = BABYLON.GUI.Button.CreateMyCustomButton("n_"+label, label, fpath);
@@ -1167,7 +1186,7 @@ const createScene = async function () {
     }
 
     // 画面右上。コース選択ボタン
-    var guiIconCourse = new BABYLON.GUI.Image("ctrl", "textures/icon_golf6.png");
+    var guiIconCourse = new BABYLON.GUI.Image("ctrl", iconPath3);
     {
         guiIconCourse.width = "60px";
         guiIconCourse.height = "60px";
