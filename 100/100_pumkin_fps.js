@@ -448,7 +448,7 @@ const createScene = async function () {
         }
         iblttype = vtype;
         if (iblttype == 0) {
-            mat = new BABYLON.StandardMaterial('mat', scene);
+            let mat = new BABYLON.StandardMaterial('mat', scene);
             mat.diffuseColor = BABYLON.Color3.Yellow();
             let nbullet = 50;
             for (let i=0; i < nbullet; ++i) {
