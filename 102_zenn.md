@@ -11,7 +11,7 @@ https://playground.babylonjs.com/full.html#7F3RH1
 
 ソース
 
-https://github.com/fnamuoo/webgl/blob/main/101
+https://github.com/fnamuoo/webgl/blob/main/102
 
 ローカルで動かす場合、上記ソースに加え、別途 git 内の 069/js を追加して ./js に配置してください。
 

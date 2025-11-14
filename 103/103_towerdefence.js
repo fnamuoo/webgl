@@ -39,13 +39,13 @@ const iconPath4 = "textures/icon_lighthouse_y.png"
 // ----------------------------------------
 
 // // PlayGround
-// const glb_url = "https://assets.babylonjs.com/meshes/";
+// const glb_url = "https://raw.githubusercontent.com/fnamuoo/webgl/main/103/assets/";
 // const glb_fname1 = "yellowEnergyBall.glb";
 // const glb_fname2 = "spellDisk.glb";
-// const iconPath1 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/106/textures/icon_gun_6_y.png"
-// const iconPath2 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/106/textures/icon_gun_8_y.png"
-// const iconPath3 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/106/textures/icon_gun_9_y.png"
-// const iconPath4 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/106/textures/icon_lighthouse_y.png"
+// const iconPath1 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/103/textures/icon_gun_6_y.png"
+// const iconPath2 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/103/textures/icon_gun_8_y.png"
+// const iconPath3 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/103/textures/icon_gun_9_y.png"
+// const iconPath4 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/103/textures/icon_lighthouse_y.png"
 
 
 const R1 = Math.PI/180;
@@ -67,6 +67,9 @@ const createScene = async function () {
         // babylonjs tips集 では addMeshTask が紹介されていたけど...
         // yellowEnergyBall.glb は addContainerTask で読み込まないとダメっぽい
         let containerAssetTask1 = assetsManager.addContainerTask("task1","", glb_url, glb_fname1)
+        // playground (v8.37)では挙動が変わって、addMeshTaskでOKみたい!?
+        // let containerAssetTask1 = assetsManager.addMeshTask("task1","", glb_url, glb_fname1)
+
         // spellDisk.glb は addMeshTask で読み込まないとダメっぽい
         let meshAssetTask2 = assetsManager.addMeshTask("task2","", glb_url, glb_fname2)
 
