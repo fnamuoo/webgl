@@ -1,0 +1,239 @@
+# babylonjs 環境を updateする
+
+ソース
+
+https://github.com/fnamuoo/webgl/blob/main/104
+
+ - index  .. サンプルをローカルで動かす例
+ - index_havok  .. 物理演算サンプルをローカルで動かす例
+
+## 概要
+
+自分のローカルな babylonjs 環境を updateします。
+
+自分の環境は開発の仕方が古く、以下の手順をとっています。
+
+- JavaScriptをべた書き(npm を使っているのに TypeScript は使わない)
+- Babylonjsのライブラリ（自前の環境でコンパイルしたバージョン固定版）をローカルに配置
+- Visual Studio Code の Live Server でローカルサーバをたてて動作確認。公開時に PlayGround にソースをコピペして公開。
+
+この方法の利点として以下があります。
+
+- PlayGround の JavaScript ソースを .js ファイルにコピペして自分の環境で動かせる
+- 自分の環境の .js ファイルを PlayGround にそのままコピペして動かせる
+
+最近、PlayGround が v2 になってお作法が変わりました。export の追記が必要だったり、strict で文法に厳しくなったり。
+今までの方法のコピペで（部分的に修正することなく）スマートに使えるよう、ライブラリや html を更新しました。
+
+## やったこと
+
+- ライブラリの更新
+- .htmlの整備
+    - ライブラリパスの書き換えとコピー
+    - JS コードの別ファイル化
+    - havok対応
+
+### ライブラリの更新
+
+git からソースをダウンロードして npm でビルドします。
+
+- 事前確認／npm 環境
+
+  - 半年くらい前に npm をインストールしたままですが、特に古くもないはずなのでそのまま実施します。
+    一応バージョンはこちら。（現状のnpmの最新版は 11.6.2 ですが今回の利用では少々古くても問題なかったです）
+
+    ```sh
+    > npm -v
+    10.9.2
+    ```
+
+- gitソースのダウンロード
+  - [https://github.com/BabylonJS/Babylon.js](https://github.com/BabylonJS/Babylon.js) よりダウンロード
+  - 執筆時（2025/11/15）のバージョンは v8.37.0
+  - zip を 適当なフォルダに展開
+
+- npm でビルド
+  - コマンドプロンプトを起動
+  - 展開したフォルダに移動
+  - 環境設定のコマンド実行
+
+    - 実行するコマンドは `npm install`
+
+      ```sh
+      > npm install
+      npm warn skipping integrity check for git dependency ssh://git@github.com/RaananW/react-contextmenu.git
+      npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+      npm warn deprecated npmlog@5.0.1: This package is no longer supported.
+      (中略)
+      To address issues that do not require attention, run:
+        npm audit fix
+      
+      To address all issues (including breaking changes), run:
+        npm audit fix --force
+      
+      Run `npm audit` for details.
+      >
+      ```
+
+  - UMD 版をビルド
+
+    - 実行するコマンドは `npm run build:umd`
+  
+      ```sh
+      > npm run build:umd
+      (中略)
+      ...
+      NX   Successfully ran target build for 7 projects and 26 tasks they depend on (3m)
+      
+      Nx read the output from the cache instead of running the command for 19 out of 33 tasks.
+      >
+      ```
+    
+    - どこかの資料で下記コマンドも実行とあったので一応実施（しなくてもよいかも？）
+
+      ```sh
+      > npm run build:babylonjs
+      > npm run build:tools
+      ```
+
+### .htmlの整備
+
+PlayGroundを使うときは JavsScript のみを用意すればよいですが、ローカル環境で動かすときは PlyaGround に変わる html/WEBサーバ を用意する必要があります。
+html は PlayGround のダウンロード機能で取得できる html を参考にできます。ただ、こちらは CDN ライブラリ（外部の最新のライブラリ）を利用するので、ライブラリのパスをローカルファイルを見るように変更します。
+さらに PlayGround で記述していたコードは html 内に code （１行の文字列）として張り付けられてます。これを別ファイル化します。
+
+#### ライブラリパスの書き換えとコピー
+
+基本的に PlayGround でダウンロードした html に記載された CDN のパスを、上述でビルドしたローカルのパスを参照するようにします。
+ビルドされたファイルは `./packages` 以下を検索してコピーします。
+検索すると `./node_modules` でも同じファイルが見つかり、同じないようなのでどちらを使っても良さげに思いますが、packages がビルドされたディレクトリっぽい気がするのこちらからコピーします（だれか詳しい方いたら教えてくださいｗ）
+
+コピーするファイルは 基本 html に記載された .js をコピーします。ただ、下記ファイルは特別扱いします。
+
+- Assets.js
+  - こちらは検索しても見つからないので、リンク先の https://assets.babylonjs.com/generated/Assets.js をブラウザで開き、保存します。
+- HavokPhysics_umd.js
+  - 同じディレクトリにある HavokPhysics.wasm も必要っぽいのでこちらも一緒にコピーします。
+
+    結果、html は下記のように書き換えます。
+    コピー先は自由にしてよいと思いますが、ここでは ./js/ 以下に配置しています。
+
+    ```html
+    // 書き換え前の　index.html
+    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
+    <script src="https://cdn.babylonjs.com/recast.js"></script>
+    <script src="https://cdn.babylonjs.com/ammo.js"></script>
+    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+    <script src="https://cdn.babylonjs.com/cannon.js"></script>
+    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
+    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="https://cdn.babylonjs.com/addons/babylonjs.addons.min.js"></script>
+    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+    ```
+
+    ```html
+    // 書き換え後の index.html
+    <script src="js/Assets.js"></script>
+    <script src="js/recast.js"></script>
+    <script src="js/ammo.js"></script>
+    <script src="js/havok/HavokPhysics_umd.js"></script>
+    <script src="js/cannon.js"></script>
+    <script src="js/Oimo.js"></script>
+    <script src="js/earcut.min.js"></script>
+    <script src="js/babylon.js"></script>
+    <script src="js/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="js/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+    <script src="js/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+    <script src="js/loaders/babylonjs.loaders.js"></script>
+    <script src="js/serializers/babylonjs.serializers.min.js"></script>
+    <script src="js/gui/babylon.gui.min.js"></script>
+    <script src="js/addons/babylonjs.addons.min.js"></script>
+    <script src="js/inspector/babylon.inspector.bundle.js"></script>
+    ```
+
+#### JS コードの別ファイル化
+
+PlayGround を開いてダウンロード（「↓」ボタン押下）して、index.htmlを見ると PlayGroundで記述していたコードが変数 code に記述されています。PlayGround での JSコードを別ファイル（例えば index.js)として配置した場合に、下記のように書き換えれば良さげです。
+
+```html
+// 変更前のindex.html
+const code = "// snapshot:index.js\nvar createScene = function() {\n  var scene = new BABYLON.Scene(engine);\n  var camera = new BABYLON.FreeCamera(\"camera1\", new BABYLON.Vector3(0, 5, -10), scene);\n  camera.setTarget(BABYLON.Vector3.Zero());\n  camera.attachControl(canvas, true);\n  var light = new BABYLON.HemisphericLight(\"light\", new BABYLON.Vector3(0, 1, 0), scene);\n  light.intensity = 0.7;\n  var sphere = BABYLON.MeshBuilder.CreateSphere(\"sphere\", { diameter: 2, segments: 32 }, scene);\n  sphere.position.y = 1;\n  var ground = BABYLON.MeshBuilder.CreateGround(\"ground\", { width: 6, height: 6 }, scene);\n  return scene;\n};\nexport {\n  createScene\n};\n//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsic25hcHNob3Q6aW5kZXguanMiXSwKICAic291cmNlc0NvbnRlbnQiOiBbImV4cG9ydCBjb25zdCBjcmVhdGVTY2VuZSA9IGZ1bmN0aW9uICgpIHtcbiAgICAvLyBUaGlzIGNyZWF0ZXMgYSBiYXNpYyBCYWJ5bG9uIFNjZW5lIG9iamVjdCAobm9uLW1lc2gpXG4gICAgdmFyIHNjZW5lID0gbmV3IEJBQllMT04uU2NlbmUoZW5naW5lKTtcblxuICAgIC8vIFRoaXMgY3JlYXRlcyBhbmQgcG9zaXRpb25zIGEgZnJlZSBjYW1lcmEgKG5vbi1tZXNoKVxuICAgIHZhciBjYW1lcmEgPSBuZXcgQkFCWUxPTi5GcmVlQ2FtZXJhKFwiY2FtZXJhMVwiLCBuZXcgQkFCWUxPTi5WZWN0b3IzKDAsIDUsIC0xMCksIHNjZW5lKTtcblxuICAgIC8vIFRoaXMgdGFyZ2V0cyB0aGUgY2FtZXJhIHRvIHNjZW5lIG9yaWdpblxuICAgIGNhbWVyYS5zZXRUYXJnZXQoQkFCWUxPTi5WZWN0b3IzLlplcm8oKSk7XG5cbiAgICAvLyBUaGlzIGF0dGFjaGVzIHRoZSBjYW1lcmEgdG8gdGhlIGNhbnZhc1xuICAgIGNhbWVyYS5hdHRhY2hDb250cm9sKGNhbnZhcywgdHJ1ZSk7XG5cbiAgICAvLyBUaGlzIGNyZWF0ZXMgYSBsaWdodCwgYWltaW5nIDAsMSwwIC0gdG8gdGhlIHNreSAobm9uLW1lc2gpXG4gICAgdmFyIGxpZ2h0ID0gbmV3IEJBQllMT04uSGVtaXNwaGVyaWNMaWdodChcImxpZ2h0XCIsIG5ldyBCQUJZTE9OLlZlY3RvcjMoMCwgMSwgMCksIHNjZW5lKTtcblxuICAgIC8vIERlZmF1bHQgaW50ZW5zaXR5IGlzIDEuIExldCdzIGRpbSB0aGUgbGlnaHQgYSBzbWFsbCBhbW91bnRcbiAgICBsaWdodC5pbnRlbnNpdHkgPSAwLjc7XG5cbiAgICAvLyBPdXIgYnVpbHQtaW4gJ3NwaGVyZScgc2hhcGUuXG4gICAgdmFyIHNwaGVyZSA9IEJBQllMT04uTWVzaEJ1aWxkZXIuQ3JlYXRlU3BoZXJlKFwic3BoZXJlXCIsIHtkaWFtZXRlcjogMiwgc2VnbWVudHM6IDMyfSwgc2NlbmUpO1xuXG4gICAgLy8gTW92ZSB0aGUgc3BoZXJlIHVwd2FyZCAxLzIgaXRzIGhlaWdodFxuICAgIHNwaGVyZS5wb3NpdGlvbi55ID0gMTtcblxuICAgIC8vIE91ciBidWlsdC1pbiAnZ3JvdW5kJyBzaGFwZS5cbiAgICB2YXIgZ3JvdW5kID0gQkFCWUxPTi5NZXNoQnVpbGRlci5DcmVhdGVHcm91bmQoXCJncm91bmRcIiwge3dpZHRoOiA2LCBoZWlnaHQ6IDZ9LCBzY2VuZSk7XG5cbiAgICByZXR1cm4gc2NlbmU7XG59O1xuLy8jIHNvdXJjZVVSTD1maWxlOi8vL3BnL2luZGV4LmpzIl0sCiAgIm1hcHBpbmdzIjogIjtBQUFPLElBQU0sY0FBYyxXQUFZO0FBRW5DLE1BQUksUUFBUSxJQUFJLFFBQVEsTUFBTSxNQUFNO0FBR3BDLE1BQUksU0FBUyxJQUFJLFFBQVEsV0FBVyxXQUFXLElBQUksUUFBUSxRQUFRLEdBQUcsR0FBRyxHQUFHLEdBQUcsS0FBSztBQUdwRixTQUFPLFVBQVUsUUFBUSxRQUFRLEtBQUssQ0FBQztBQUd2QyxTQUFPLGNBQWMsUUFBUSxJQUFJO0FBR2pDLE1BQUksUUFBUSxJQUFJLFFBQVEsaUJBQWlCLFNBQVMsSUFBSSxRQUFRLFFBQVEsR0FBRyxHQUFHLENBQUMsR0FBRyxLQUFLO0FBR3JGLFFBQU0sWUFBWTtBQUdsQixNQUFJLFNBQVMsUUFBUSxZQUFZLGFBQWEsVUFBVSxFQUFDLFVBQVUsR0FBRyxVQUFVLEdBQUUsR0FBRyxLQUFLO0FBRzFGLFNBQU8sU0FBUyxJQUFJO0FBR3BCLE1BQUksU0FBUyxRQUFRLFlBQVksYUFBYSxVQUFVLEVBQUMsT0FBTyxHQUFHLFFBQVEsRUFBQyxHQUFHLEtBQUs7QUFFcEYsU0FBTztBQUNYOyIsCiAgIm5hbWVzIjogW10KfQo=\n";
+const blob = new Blob([code], { type: 'text/javascript' });
+const url = URL.createObjectURL(blob);
+```
+
+```html
+// 変更後のindex.html
+const url = './index.js';
+```
+
+```js
+// 変更後、分割した index.js (PlayGroundでの記述そのまま)
+export const createScene = function () {
+    // This creates a basic Babylon Scene object (non-mesh)
+    var scene = new BABYLON.Scene(engine);
+
+    // This creates and positions a free camera (non-mesh)
+    var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
+
+    // This targets the camera to scene origin
+    camera.setTarget(BABYLON.Vector3.Zero());
+
+    // This attaches the camera to the canvas
+    camera.attachControl(canvas, true);
+
+    // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+    var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
+    // Default intensity is 1. Let's dim the light a small amount
+    light.intensity = 0.7;
+
+    // Our built-in 'sphere' shape.
+    var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, scene);
+
+    // Move the sphere upward 1/2 its height
+    sphere.position.y = 1;
+
+    // Our built-in 'ground' shape.
+    var ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 6, height: 6}, scene);
+
+    return scene;
+};
+```
+
+#### havok対応
+
+物理演算(havok)のコードを動かそうと、簡単なデモ[Simple scene](https://playground.babylonjs.com/#Z8HTUN#1)のコード(JavaScript)部分をコピペしても動きませんでした。またPlayGroundからダウンロードした html はどうだろうかと試しましたがこちらも動きませんでした。
+
+Ctrl-Shift-I でデバッグコンソールを表示すると `Uncaught ReferenceError: HK is not defined` が出ており、次の一文が足りないようでうす。
+
+```
+globalThis.HK = await HavokPhysics();
+```
+
+修正版（完全版）の html は 上記の git にある index_havok.html を参照してください。
+
+## 限界
+
+現段階で下記のPlayGroundのソースが動かないことが確認できています。
+
+- [The Meshes Library](https://doc.babylonjs.com/toolsAndResources/assetLibraries/availableMeshes/)にあるメッシュ表示
+  - コピーして実行してみるとカメラが無いといわれる（エラーになる）
+  - コードが簡略化されずぎて PlayGround 側で特殊な処理をしている気がする
+  - カメラを配置して、メッシュを読み込むやり方（簡略化せずに丁寧に記述したコード）なら大丈夫っぽい？
+
+他にも動かないケースがあるかもです。予めご承知おきください。
+
+## まとめ・雑感
+
+babylonjs のアップデートの影響で、公開作業のたびに細かい修正（export を createScene に加えたり、変数の定義忘れを修正したり）が面倒になってきたので自前の環境を更新しました。
+とりあえず、自分の興味ある分野、良く触る API（mesh や havok）を重点的に動作確認しました。
+
+ご参考になれば幸いです。
