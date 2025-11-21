@@ -1,4 +1,6 @@
+// Babylon.js で物理演算(havok)：車モデル
 
+// ref)
 // - Arcade Raycast Vehicle
 //   https://forum.babylonjs.com/t/arcade-raycast-vehicle/45088
 //     https://playground.babylonjs.com/#8WQIA8#10
@@ -13,18 +15,22 @@
 const R90 = Math.PI/2;
 const R180 = Math.PI;
 
-let Vehicle = null;
 const SCRIPT_URL1 = "./Vehicle.js";
-import(SCRIPT_URL1).then((obj) => { Vehicle = obj; });
+const SCRIPT_URL2 = "./Vehicle2.js";
+let coursePath="../066/textures/BoxySVG_test1_3_400x300.png"
+// const SCRIPT_URL1 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/105/Vehicle.js";
+// const SCRIPT_URL2 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/105/Vehicle2.js";
+// let coursePath="https://raw.githubusercontent.com/fnamuoo/webgl/main//066/textures/BoxySVG_test1_3_400x300.png"
+
+let Vehicle = null;
+await import(SCRIPT_URL1).then((obj) => { Vehicle = obj; });
 
 let Vehicle2 = null;
-const SCRIPT_URL2 = "./Vehicle2.js";
-import(SCRIPT_URL2).then((obj) => { Vehicle2 = obj; });
+await import(SCRIPT_URL2).then((obj) => { Vehicle2 = obj; });
 
 
 // ------------------------------
 
-let coursePath="../066/textures/BoxySVG_test1_3_400x300.png"
 
 export var createScene = async function () {
     var scene = new BABYLON.Scene(engine);
