@@ -22,8 +22,8 @@ const myTextPath3 = "../093/textures/pipo-charachip017a.png"; // メイド
 
 // ------------------------------
 // const SCRIPT_URL2 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/105/Vehicle2.js";
-// let coursePath="https://raw.githubusercontent.com/fnamuoo/webgl/main///066/textures/BoxySVG_test1_3_400x300.png";
-// const myTextPath3 = "https://raw.githubusercontent.com/fnamuoo/webgl/main///093/textures/pipo-charachip017a.png";
+// let coursePath="https://raw.githubusercontent.com/fnamuoo/webgl/main/066/textures/BoxySVG_test1_3_400x300.png";
+// const myTextPath3 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/093/textures/pipo-charachip017a.png";
 
 
 let Vehicle = null;
