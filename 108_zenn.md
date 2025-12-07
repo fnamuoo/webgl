@@ -12,7 +12,7 @@ https://playground.babylonjs.com/?inspectorv2=true?BabylonToolkit#QH0IGO
 
 ソース
 
-https://github.com/fnamuoo/webgl/blob/main/107
+https://github.com/fnamuoo/webgl/blob/main/108
 
 ローカルで動かす場合、上記ソースに加え、別途 git 内の 104/js を ./js として配置してください。
 
