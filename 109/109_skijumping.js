@@ -27,7 +27,7 @@ const myTextPath = "../096/textures/pipo-charachip007_.png"; // 男の子
 const lineArrowPath = '../099/textures/arrow_.png';
 
 // const SCRIPT_URL2 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/105/Vehicle2.js";
-// const myTextPath = "https://raw.githubusercontent.com/fnamuoo/webgl/main//096/textures/pipo-charachip007_.png"; // 男の子
+// const myTextPath = "https://raw.githubusercontent.com/fnamuoo/webgl/main/096/textures/pipo-charachip007_.png"; // 男の子
 // const lineArrowPath = 'https://raw.githubusercontent.com/fnamuoo/webgl/main/099/textures/arrow_.png';
 
 let Vehicle2 = null;
