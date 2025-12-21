@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Babylon.js Playground</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+
+  <!-- Babylon globals (kept so window.BABYLON is available if your app expects it) -->
+  <script src="js/Assets.js"></script>
+  <script src="js/recast.js"></script>
+  <script src="js/ammo.js"></script>
+  <script src="js/havok/HavokPhysics_umd.js"></script>
+  <script src="js/cannon.js"></script>
+  <script src="js/Oimo.js"></script>
+  <script src="js/earcut.min.js"></script>
+  <script src="js/babylon.js"></script>
+  <script src="js/materialsLibrary/babylonjs.materials.min.js"></script>
+  <script src="js/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+  <script src="js/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+  <script src="js/loaders/babylonjs.loaders.js"></script>
+  <script src="js/serializers/babylonjs.serializers.min.js"></script>
+  <script src="js/gui/babylon.gui.min.js"></script>
+  <script src="js/addons/babylonjs.addons.min.js"></script>
+  <script src="js/inspector/babylon.inspector.bundle.js"></script>
+
+  <style>
+    html,body,#renderCanvas{width:100%;height:100%;margin:0;padding:0;overflow:hidden;background:#000}
+  </style>
+</head>
+<body>
+  <canvas id="renderCanvas"></canvas>
+  <script type="module">
+    const url = './114_alpine_skiing.js';
+
+    const BABYLON = window.BABYLON;
+    const canvas = document.getElementById('renderCanvas');
+
+    // Import your bundled app (which exports createScene / default)
+    const mod = await import(url);
+
+globalThis.HK = await HavokPhysics();
+
+    let engine = null;
+    if (typeof mod.createEngine === 'function') {
+      try { engine = await mod.createEngine(); } catch {}
+    }
+    if (!engine) {
+      engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+    }
+    window.engine = engine; window.canvas = canvas;
+
+    let createScene = mod.createScene || mod.default;
+    if (!createScene && mod.Playground?.CreateScene) createScene = (e,c)=>mod.Playground.CreateScene(e,c);
+    if (!createScene) throw new Error('No createScene() export found.');
+
+    const scene = await (createScene(engine, canvas) ?? createScene());
+    engine.runRenderLoop(()=>scene.render());
+    addEventListener('resize', ()=>engine.resize());
+
+    addEventListener('unload', ()=> URL.revokeObjectURL(url));
+  </script>
+</body>
+</html>
