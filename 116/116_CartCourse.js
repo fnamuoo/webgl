@@ -1,4 +1,4 @@
-// カートコース特集
+//  Babylon.js で物理演算(havok)：カートレース
 
 // ## 操作方法
 //  - 1                           .. キーボード入力に切り替え
@@ -209,17 +209,9 @@ const courseInfoList = [
 //    [900101, 0, "MotegiSuperSpeedway", dbase+""], // テスト用
 ];
 
-
-
-
-
 let nstage = courseInfoList.length;
 
-
-
-// var createScene_vehicle_07 = async function () {
 export var createScene = async function () {
-    await Recast();
     var scene = new BABYLON.Scene(engine);
     scene.clearColor = BABYLON.Color4.FromColor3(BABYLON.Color3.FromHexString('#020207'))
 
