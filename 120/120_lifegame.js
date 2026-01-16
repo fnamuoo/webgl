@@ -1,4 +1,4 @@
-//  ライフゲーム / セルオートマトン
+// Babylon.js：サイズの限界をセルオートマトン（ライフゲーム）／CPU版で検証する
 //
 
 // 描画方法
@@ -54,6 +54,7 @@ let nx=50, ny=50, scale=0.4;
 // ======================================================================
 
 let fpath = "textures/blackWhite.png";
+// let fpath = "https://raw.githubusercontent.com/fnamuoo/webgl/main/120/textures/blackWhite.png";
 
 const R90 = Math.PI/2;
 const R180 = Math.PI;
