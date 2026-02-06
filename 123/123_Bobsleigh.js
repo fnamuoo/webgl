@@ -20,23 +20,26 @@ const R180 = Math.PI;
 // const goalPath ="textures/checker.jpg";
 // const skyboxTextPath4 = "textures/skybox4"; // 雪山
 // const iconPath3 = "textures/icon_golf6.png";
+// const dbase = "textures/course6/"
 
 // --------------------------------------------------
 const SCRIPT_URL2 = "../105/Vehicle2.js";
 const SCRIPT_URL22 = "./CourseData4.js";
-const myTextPath3 = "../096/textures/pipo-charachip017a.png"; // メイド
+const myTextPath3 = "../111/textures/pipo-charachip017a.png"; // メイド
 const goalPath ="textures/checker.jpg";
 const skyboxTextPath4 = "../111/textures/skybox4"; // 雪山
 const iconPath3 = "../099/textures/icon_golf6.png";
+const dbase = "textures/course6/"
 
 // --------------------------------------------------
 
 // const SCRIPT_URL2 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/105/Vehicle2.js";
-// const SCRIPT_URL11 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/123/CourseData4.js";
-// const myTextPath3 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/096/textures/pipo-charachip017a.png"; // メイド
+// const SCRIPT_URL22 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/123/CourseData4.js";
+// const myTextPath3 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/111/textures/pipo-charachip017a.png"; // メイド
 // const goalPath ="https://raw.githubusercontent.com/fnamuoo/webgl/main/123/textures/checker.jpg";
 // const skyboxTextPath4 = "textures/skybox4"; // 雪山
 // const iconPath3 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/099/textures/icon_golf6.png";
+// const dbase = "https://raw.githubusercontent.com/fnamuoo/webgl/main/123/textures/course6/"
 
 
 
@@ -50,10 +53,9 @@ await import(SCRIPT_URL2).then((obj) => { Vehicle2 = obj; });
 let CourseData4 = null;
 await import(SCRIPT_URL22).then((obj) => { CourseData4 = obj; });
 
-const dbase = "textures/course6/"
-
 
 let icamera = 6, ncamera = 8, imymesh = 22; // player/ボブスレーもどき
+// let icamera = 6, ncamera = 8, imymesh = 21; // 横滑りするボード
 // let icamera = 6, ncamera = 8, imymesh = 5; // player/車
 // let icamera = 0, ncamera = 8, imymesh = 0; // 全体を俯瞰
 // let mymeshList = [0, 3, 5, 22];
@@ -2254,5 +2256,4 @@ console.log("under cunstrunction");
 
     return scene;
 }
-
 
