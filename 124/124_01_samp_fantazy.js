@@ -1,12 +1,8 @@
-// sample
-
+// Babylon.js：サンプルを生成ＡＩで幻想的にしてみる
 
 // const fpathFlare = "textures/flare.png";
-
 const fpathFlare = "../068/textures/flare.png";
-
 // const fpathFlare = "textures/flare.png";
-// const fpathFlare = "https://raw.githubusercontent.com/fnamuoo/webgl/main/081/textures/flare.png";
 
 // ######################################################################
 // ######################################################################

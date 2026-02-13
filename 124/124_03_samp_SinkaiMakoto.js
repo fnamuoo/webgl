@@ -1,4 +1,4 @@
-// sample - night-pool
+// Babylon.js：サンプルを生成ＡＩで 新海誠な感じ にしてみる
 
 // const fpathFlare = "textures/flare.png";
 

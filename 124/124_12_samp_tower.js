@@ -1,5 +1,4 @@
-// sample - night-pool
-
+// Babylon.js：サンプルを 幻想的「浮かぶ塔」 にしてみる
 
 // const fpathFloor = "textures/floor.png";
 // const fpathGlass = "textures/glassbuilding.jpg";

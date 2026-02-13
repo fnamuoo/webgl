@@ -1,5 +1,4 @@
-// sample
-
+// Babylon.js：サンプルを 幻想的「月」 にしてみる
 
 // const fpathMoon = "textures/Moon_texture.jpg";
 // const fpathWater = "textures/waterbump.png";
@@ -12,9 +11,9 @@ const fpathParticle = "textures/particle.png";
 const fpathFlare = "../068/textures/flare.png";
 
 // const fpathMoon = "https://raw.githubusercontent.com/fnamuoo/webgl/main/081/textures/Moon_texture.jpg";
+// const fpathWater = "textures/waterbump.png";
 // const fpathParticle = "textures/particle.png";
 // const fpathFlare = "textures/flare.png";
-// const fpathFlare = "https://raw.githubusercontent.com/fnamuoo/webgl/main/081/textures/flare.png";
 
 export const createScene = function () {
     var scene = new BABYLON.Scene(engine);
