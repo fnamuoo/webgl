@@ -1,27 +1,22 @@
 // Babylon.js で物理演算(havok)：ダウンヒルにバンクをつける
 
-const R01 = Math.PI/1800;
-const R02 = Math.PI/900;
-const R03 = Math.PI/600;
-const R04 = Math.PI/450;
-const R05 = Math.PI/360;
-const R08 = Math.PI/225;
+// - キーボード入力
+//   - カーソル上            .. 前進
+//   - カーソル下            .. 後進
+//   - カーソル右左          .. 旋回
+//   - Ctrl+カーソル右左     .. 急旋回
+//   - space                 .. ブレーキ
+//   - enter                 .. ジャンプ（姿勢を正す）
+//   - r                     .. スタート位置に戻す
+//   - (c/C[=shift+c])       .. カメラ変更 (バードビュー／ドライバーズビュー)
+//   - (n/N[=shift+n])       .. ステージ変更
+//   - (m/M[=shift+m])       .. プレイヤー変更
+//   - h                     .. 使い方表示 ON/OFF
+//   - (画面右上クリック)    .. ステージ選択GUI表示 ON/OFF
 
-const R1 = Math.PI/180;
-const R2 = Math.PI/90;
-const R3 = Math.PI/60;
-const R4 = Math.PI/45;
-const R5 = Math.PI/36;
-const R10 = Math.PI/18;
-const R30 = Math.PI/6;
-const R45 = Math.PI/4;
-const R60 = Math.PI/3;
 
 const R90 = Math.PI/2;
 const R180 = Math.PI;
-const R270 = Math.PI*3/2;
-const R360 = Math.PI*2;
-
 
 // const SCRIPT_URL2 = "./Vehicle_draft2.js";
 // const SCRIPT_URL22 = "./CourseData4.js";
