@@ -25,7 +25,7 @@ const SCRIPT_URL2 = "./MazeData2.js";
 
 // // for PlayGround
 // const SCRIPT_URL1 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/075/Maze.js";
-// const SCRIPT_URL2 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/131/MazeData.js";
+// const SCRIPT_URL2 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/131/MazeData2.js";
 
 let Maze = null;
 let MazeData = null;
