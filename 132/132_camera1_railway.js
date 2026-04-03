@@ -1,6 +1,5 @@
-// コース チェック 用
+// Babylon.js：マルチカメラとビューポート分割
 
-// 
 //  - space/enter      .. カメラ切り替え
 //  - 1/2/3/4/5/6/7/8  .. ８カメ表示時のメインカメラの切り替え
 //  - x/z              .. 被写体（列車）切り替え
@@ -13,8 +12,6 @@ export var createScene_007 = async function () {
     const R270 = Math.PI*3/2;
     const R360 = Math.PI*2;
 
-
-
     // const SCRIPT_URL22 = "./CourseData6.js";
     // const goalPath ="textures/checker.jpg";
     // const skyboxTextPath9 = "textures/zgrid3";
@@ -22,6 +19,10 @@ export var createScene_007 = async function () {
     const SCRIPT_URL22 = "./CourseData6.js";
     const goalPath ="../123/textures/checker.jpg";
     const skyboxTextPath9 = "../125/textures/zgrid3";
+
+    // const SCRIPT_URL22 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/132/CourseData6.js";
+    // const goalPath ="https://raw.githubusercontent.com/fnamuoo/webgl/main/123/textures/checker.jpg";
+    // const skyboxTextPath9 = "https://raw.githubusercontent.com/fnamuoo/webgl/main/125/textures/zgrid3";
 
     const skyboxTextPathList = [skyboxTextPath9];
     let skyboxType=0; // tropical/ grid
