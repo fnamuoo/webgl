@@ -19,7 +19,7 @@ https://playground.babylonjs.com/?BabylonToolkit#01UY0Y
 https://github.com/fnamuoo/webgl/blob/main/137
 
 :::message
-ローカルで動かす場合、上記ソースに加え、別途 git 内の [104/js](https://github.com/fnamuoo/webgl/tree/main/136/js) を ./js として配置してください。
+ローカルで動かす場合、上記ソースに加え、別途 git 内の [136/js](https://github.com/fnamuoo/webgl/tree/main/136/js) を ./js として配置してください。
 :::
 
 ## 概要
