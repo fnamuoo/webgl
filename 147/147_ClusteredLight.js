@@ -1,7 +1,7 @@
-// Clustered Lighting
+// Babylon.js：クラスター照明を使ってみる
 
 // // local(1)
-// let pathRoot = "../";
+// let pathRoot = "";
 // const fpathFloor = pathRoot + "textures/floor.png";
 // const fpathGlassBuilding = pathRoot + "textures/glassbuilding.jpg";
 // const fpathGrass = pathRoot + "textures/grass.jpg";
@@ -21,28 +21,6 @@ const fpathGrassnGray = pathRoot + "147/textures/grassn_gray.png";
 const fpathRockn = pathRoot + "147/textures/rockn_gray.png";
 const fpathRoundMask = pathRoot + "147/textures/roundMask.png";
 
-
-
-//     let pathRoot = "../";
-//             const fpathFloor = pathRoot + "081/textures/floor.png";
-// //            const fpathFloor = pathRoot + "textures/floor.png";
-
-//     // let pathRoot = "./";
-//     // const fpathGlassBuilding = pathRoot + "textures/glassbuilding.jpg";
-//     // const fpathGrass = "textures/grass.jpg";
-//     let pathRoot = "../";
-//     const fpathGlassBuilding = pathRoot + "124/textures/glassbuilding.jpg";
-//     const fpathGrass = pathRoot + "065/textures/grass.jpg";
-
-// //     // const fpathFloor = "textures/floor.png";
-//     // const fpathRockn = "textures/rockn_gray.png";
-//     // const fpathRoundMask = "textures/roundMask.png";
-// //    const fpathFloor = "../081/textures/floor.png";
-//     const fpathGrassnGray = "textures/grassn_gray.png";
-//     const fpathRockn = "textures/rockn_gray.png";
-//     const fpathRoundMask = "textures/roundMask.png";
-
-
 export var createScene_test_03 = async function () {
 
     const scene = new BABYLON.Scene(engine);
@@ -51,30 +29,19 @@ export var createScene_test_03 = async function () {
     camera.wheelDeltaPercentage = 0.01;
     camera.useAutoRotationBehavior = true; // 自動でゆっくり回転
 
-    // const light = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 50, 0));
-    // light.intensity = 0.3; // 薄暗い感じに
-
-    if (1) {
+    {
         // 地面
         let grndW=200, grndH=200;
         let meshGrnd = BABYLON.MeshBuilder.CreateGround("ground", { width:grndW, height:grndH }, scene);
 
-        if (1) {
-            // const fpathFloor = "textures/floor.png";
+        {
             var mat = new BABYLON.StandardMaterial("mat", scene);
             var texture = new BABYLON.Texture(fpathFloor, scene);
-            // mat.emissionTexture = texture;
             mat.diffuseTexture = texture;
             mat.diffuseTexture.uScale = 200;
             mat.diffuseTexture.vScale = 200;
             mat.specularColor = new BABYLON.Color3(0, 0, 0); // 光沢を消す
             meshGrnd.material = mat;
-        }
-        if (0) {
-        meshGrnd.position.y += -0.01;
-        meshGrnd.material = new BABYLON.GridMaterial("groundMaterial", scene);
-        meshGrnd.material.majorUnitFrequency = 100; 
-        meshGrnd.material.minorUnitVisibility  = 0.2;
         }
     }
 
@@ -84,7 +51,6 @@ export var createScene_test_03 = async function () {
     // 石っぽいテクスチャ
     var mat2 = new BABYLON.StandardMaterial("mat", scene);
     {
-        const fpathRockn = "textures/rockn_gray.png";
         var texture = new BABYLON.Texture(fpathRockn, scene);
         mat2.diffuseTexture = texture;
         mat2.diffuseTexture.uScale = 1;
@@ -104,13 +70,11 @@ export var createScene_test_03 = async function () {
 
             // 石柱の上の玉
             // 内側に配置予定の光源による反射を外に見せるためにBACKSIDE
-//            let mesh2 = BABYLON.MeshBuilder.CreateSphere("", {diameter:0.1});
             let mesh2 = BABYLON.MeshBuilder.CreateSphere("", {diameter:0.1, sideOrientation:BABYLON.Mesh.BACKSIDE});
             mesh2.position.set(0, meshH_+0.05, 0);
             mesh2.material = new BABYLON.StandardMaterial("mat", scene);
             mesh2.material.alpha = 0.6;
             mesh2.parent = mesh;
-
             mesh01 = mesh;
             mesh02 = mesh2;
         } else {
@@ -144,17 +108,12 @@ export var createScene_test_03 = async function () {
         // y = meshH+0.2, r=0.75, rad=0, radstep=0.55;
         y = meshH+0.05, r=0.75, rad=0, radstep=0.55;
         for (let i = 0; i < LIGHTS; i += 1) {
-            // const position = new BABYLON.Vector3(BABYLON.Scalar.RandomRange(-DEPTH, DEPTH),
-            //                                      BABYLON.Scalar.RandomRange(0, HEIGHT),
-            //                                      BABYLON.Scalar.RandomRange(-WIDTH, WIDTH));
-            // const position = new BABYLON.Vector3(0, meshH+0.2, 1*i);
-        x = r*Math.cos(rad);
-        z = r*Math.sin(rad);
+            x = r*Math.cos(rad);
+            z = r*Math.sin(rad);
             const position = new BABYLON.Vector3(x, y, z);
-        r *= 1.017;
-        rad += radstep;
-        radstep *= 0.992;
-
+            r *= 1.017;
+            rad += radstep;
+            radstep *= 0.992;
             const pointLight = new BABYLON.PointLight("point" + i, position, scene, true);
             if (!BABYLON.ClusteredLightContainer.IsLightSupported(pointLight)) {
                 notSupported = true;
@@ -162,7 +121,6 @@ export var createScene_test_03 = async function () {
             }
             pointLight.diffuse = BABYLON.Color3.Random();
             pointLight.range = 1;
-//            pointLight.range = 2;
             clustered.addLight(pointLight);
         }
 
@@ -184,40 +142,35 @@ export var createScene_test_03 = async function () {
         }
     }
 
-
     return scene;
 }
 
 
 export var createScene_test_20 = async function () {
-
     const scene = new BABYLON.Scene(engine);
     const camera = new BABYLON.ArcRotateCamera("Camera", 3 * Math.PI / 2, 3 * Math.PI / 8, 10, BABYLON.Vector3.Zero());
     camera.attachControl(canvas, true);
     camera.wheelDeltaPercentage = 0.01;
-//    camera.useAutoRotationBehavior = true; // 自動でゆっくり回転
 
     // 環境光
     const light = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 50, 0));
     light.intensity = 0.2; // 薄暗い感じに
 
-    if (1) {
+    {
         // 地面（草地）
         let grndW=200, grndH=200;
         let meshGrnd = BABYLON.MeshBuilder.CreateGround("ground", { width:grndW, height:grndH }, scene);
         meshGrnd.position.y = -0.02;
-        if (1) {
-            // const fpathFloor = "textures/grass.jpg";
+        {
             var mat = new BABYLON.StandardMaterial("mat", scene);
             var texture = new BABYLON.Texture(fpathGrass, scene);
-            // mat.emissionTexture = texture;
             mat.diffuseTexture = texture;
             mat.diffuseTexture.uScale = 200;
             mat.diffuseTexture.vScale = 200;
             meshGrnd.material = mat;
         }
     }
-    if (1) {
+    {
         // 地面（道路）
         let grndW=5, grndH=200;
         let meshGrnd = BABYLON.MeshBuilder.CreateGround("ground", { width:grndW, height:grndH }, scene);
@@ -231,9 +184,7 @@ export var createScene_test_20 = async function () {
     }
 
     // ビルを配置
-    // let pathRoot = "./";
-    // const fpathGlassBuilding = pathRoot + "textures/glassbuilding.jpg";
-    if (1) {
+    {
         // 左側(x<=-2.5)
         let px,py,pz,sx,sy,sz, adjx=-3.1;
         pz = -10;
@@ -249,11 +200,6 @@ export var createScene_test_20 = async function () {
             let mat = new BABYLON.StandardMaterial("mat1", scene);
             let texture = new BABYLON.Texture(fpathGlassBuilding, scene);
             mat.diffuseTexture = texture;
-            // mat.uOffset = Math.random() * 0.1;
-            // mat.vOffset = Math.random() * 0.1;
-            // let uvSize = Math.random() * 0.9;
-            // mat.uScale = mat.uOffset + uvSize;
-            // mat.vScale = mat.vOffset + uvSize;
             mesh.material = mat;
             pz += sz/2+0.1+Math.random();
         }
@@ -274,11 +220,6 @@ export var createScene_test_20 = async function () {
             let mat = new BABYLON.StandardMaterial("mat1", scene);
             let texture = new BABYLON.Texture(fpathGlassBuilding, scene);
             mat.diffuseTexture = texture;
-            // mat.uOffset = Math.random() * 0.1;
-            // mat.vOffset = Math.random() * 0.1;
-            // let uvSize = Math.random() * 0.9;
-            // mat.uScale = mat.uOffset + uvSize;
-            // mat.vScale = mat.vOffset + uvSize;
             mesh.material = mat;
             pz += sz/2+0.1+Math.random();
         }
@@ -328,7 +269,6 @@ export var createScene_test_20 = async function () {
         }
         for (let iz = 0; iz < 150; iz += 10) {
             adjx=-2.8, adjy=0, adjz=iz;
-//            adjx=0, adjy=0, adjz=0;
             createSignal(adjx, adjy, adjz);
         }
     }
@@ -359,13 +299,8 @@ export var createScene_test_20 = async function () {
     // 信号機の光
     let allLight = [];
     const clustered = new BABYLON.ClusteredLightContainer("clustered", [], scene);
-    if (1) {
-
-        // let notSupported = false;
-
-// console.log("plistlist.len=",plistlist.length);
+    {
         for (let plist of plistlist) {
-            //for (let p of plist) {
             let llist = [];
             for (let i = 0; i < plist.length; ++i) {
                 let p = plist[i];
@@ -421,28 +356,23 @@ export var createScene_test_20 = async function () {
 
 
 export var createScene_test_30 = async function () {
-
     const scene = new BABYLON.Scene(engine);
     const camera = new BABYLON.ArcRotateCamera("Camera", 3 * Math.PI / 2, 3 * Math.PI / 8, 10, BABYLON.Vector3.Zero());
     camera.attachControl(canvas, true);
     camera.wheelDeltaPercentage = 0.01;
-//    camera.useAutoRotationBehavior = true; // 自動でゆっくり回転
 
     // 環境光
     const light = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 50, 0));
     light.intensity = 0.2; // 薄暗い感じに
-//    light.intensity = 0.8; // 薄暗い感じに
 
-    if (1) {
+    {
         // 地面（草地）
         let grndW=200, grndH=300;
         let meshGrnd = BABYLON.MeshBuilder.CreateGround("ground", { width:grndW, height:grndH }, scene);
         meshGrnd.position.y = -0.02;
-        if (1) {
-            // const fpathFloor = "textures/grassn_gray.png";
+        {
             var mat = new BABYLON.StandardMaterial("mat", scene);
             var texture = new BABYLON.Texture(fpathGrassnGray, scene);
-            // mat.emissionTexture = texture;
             mat.diffuseTexture = texture;
             mat.diffuseTexture.uScale = 200;
             mat.diffuseTexture.vScale = 200;
@@ -450,15 +380,13 @@ export var createScene_test_30 = async function () {
             meshGrnd.material = mat;
         }
     }
-    if (1) {
+    {
         // 地面（石畳）
         let grndW=3, grndH=300;
         let meshGrnd = BABYLON.MeshBuilder.CreateGround("ground", { width:grndW, height:grndH }, scene);
-        if (1) {
-            // const fpathFloor = "textures/floor.png";
+        {
             var mat = new BABYLON.StandardMaterial("mat", scene);
             var texture = new BABYLON.Texture(fpathFloor, scene);
-            // mat.emissionTexture = texture;
             mat.diffuseTexture = texture;
             mat.diffuseTexture.uScale = 5;
             mat.diffuseTexture.vScale = 200;
@@ -480,7 +408,6 @@ export var createScene_test_30 = async function () {
         let adjx, adjy, adjz;
         var mat = new BABYLON.StandardMaterial("mat", scene);
         {
-            // const fpathRockn = "textures/rockn_gray.png";
             var texture = new BABYLON.Texture(fpathRockn, scene);
             mat.diffuseTexture = texture;
             mat.diffuseTexture.uScale = 1;
@@ -516,13 +443,7 @@ export var createScene_test_30 = async function () {
             {
                 let mesh2 = BABYLON.MeshBuilder.CreateBox("", {size:lghtR});
                 mesh2.position.set(0+adjx, baseH+pillH+platH+lghtR/2+adjy, 0+adjz);
-                // const fpathRockn = "textures/Dot.png";
-                // var texture = new BABYLON.Texture(fpathRockn, scene);
-                // mesh2.material = new BABYLON.StandardMaterial("mat", scene);
-                // mesh2.material.diffuseTexture = texture;
-
                 mesh2.material = new BABYLON.StandardMaterial("mat", scene);
-                // let fpathRoundMask = "textures/roundMask.png";
                 mesh2.material.opacityTexture = new BABYLON.Texture(fpathRoundMask, scene);
                 mesh2.material.transparencyMode = BABYLON.Material.MATERIAL_ALPHATEST; // アルファブレンドではなくアルファテストを使用
                 mesh2.material.alphaCutOff = 0.4; // この閾値以下のピクセルは完全に破棄される
@@ -595,8 +516,6 @@ export var createScene_test_30 = async function () {
 
     return scene;
 }
-
-// // export default createScene
 
 export var createScene = createScene_test_03; // ストーンサークル （玉の中に光源：電球っぽい/createInstance
 // export var createScene = createScene_test_20; // 信号機、青→黄→赤→
