@@ -9,9 +9,13 @@ https://playground.babylonjs.com/?BabylonToolkit#A5O5XQ
 
 （上記のURLにおいて、ツールバーの歯車マークから「EDITOR」のチェックを外せばウィンドウいっぱいに、歯車マークから「FULLSCREEN」を選べば画面いっぱいになります。）
 
-[ソース](150/)
+## ソース
 
+https://github.com/fnamuoo/webgl/blob/main/150
+
+:::message
 ローカルで動かす場合、上記ソースに加え、別途 git 内の [136/js](https://github.com/fnamuoo/webgl/tree/main/136/js) を ./js として配置してください。
+:::
 
 ## 概要
 
