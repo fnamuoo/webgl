@@ -352,7 +352,7 @@ export var createScene_test_24 = async function () {
             let mZRot = typeof(metaStageInfo.mZRot) !== 'undefined' ? metaStageInfo.mZRot : {};
             let xzLbl = typeof(metaStageInfo.xzLbl) !== 'undefined' ? metaStageInfo.xzLbl : {};
 
-            if(metaStageInfo.dtype=='xzy') {
+            if (metaStageInfo.dtype=='xzy') {
                 // .. カスタムでコースを作成する場合
                 let ii =-1, ix, iz, iy;
                 for (let tmp of metaStageInfo.data) {
