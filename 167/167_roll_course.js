@@ -21,7 +21,7 @@
 const SCRIPT_URL3 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/116/CourseData3.js";
 const SCRIPT_URL4 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/123/CourseData4.js";
 const SCRIPT_URL6 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/132/CourseData6.js";
-const SCRIPT_URL7 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/132/CourseData7.js";
+const SCRIPT_URL7 = "https://cdn.jsdelivr.net/gh/fnamuoo/webgl@main/167/CourseData7.js";
 
 let CourseData3 = null;
 await import(SCRIPT_URL3).then((obj) => { CourseData3 = obj; });
