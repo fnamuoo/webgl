@@ -11,7 +11,7 @@ https://playground.babylonjs.com/?BabylonToolkit#ZYD5A0
 
 ## ソース
 
-https://github.com/fnamuoo/webgl/blob/main/166
+https://github.com/fnamuoo/webgl/blob/main/167
 
 :::message
 ローカルで動かす場合、上記ソースに加え、別途 git 内の [136/js](https://github.com/fnamuoo/webgl/tree/main/136/js) を ./js として配置してください。
