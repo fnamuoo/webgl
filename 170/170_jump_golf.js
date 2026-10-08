@@ -114,7 +114,7 @@ export var createScene_test_2299 = async function () {
 // ######################################################################
 
     const ddbase1="./";
-//    const ddbase1="https://raw.githubusercontent.com/fnamuoo/webgl/main/170";
+//    const ddbase1="https://raw.githubusercontent.com/fnamuoo/webgl/main/170/";
 
         const iconPath1 = ddbase1+"textures/icon2w/ウッドのフリーアイコン3.png"
         const iconPath2 = ddbase1+"textures/icon2w/アイアンの無料アイコン.png"
