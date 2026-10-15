@@ -1,4 +1,5 @@
-// solitia
+// 175_solitia
+// https://playground.babylonjs.com/?BabylonToolkit#XYE9FZ#3
 
 // ######################################################################
 
@@ -8,8 +9,8 @@
 export var createScene_test_4005 = async function () {
 
 
-const ddbase2="";
-// const ddbase2="https://raw.githubusercontent.com/fnamuoo/webgl/main/175/";
+// const ddbase2="";
+ const ddbase2="https://raw.githubusercontent.com/fnamuoo/webgl/main/175/";
 
 // const fpathHearts = ddbase2 + "textures/tips_img/_trump1_hearts.png";
 // const fpathDiamonds = ddbase2 + "textures/tips_img/_trump1_diamonds.png";
