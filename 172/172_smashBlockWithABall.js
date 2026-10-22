@@ -2,11 +2,11 @@
 
 // ######################################################################
 
-const ddbase1="../170/";
-const ddbase2="./";
+// const ddbase1="../170/";
+// const ddbase2="./";
 
-// const ddbase1="https://raw.githubusercontent.com/fnamuoo/webgl/main/170";
-// const ddbase2="https://raw.githubusercontent.com/fnamuoo/webgl/main/172";
+const ddbase1="https://raw.githubusercontent.com/fnamuoo/webgl/main/170/";
+const ddbase2="https://raw.githubusercontent.com/fnamuoo/webgl/main/172/";
 
 const iconPath30 = ddbase1+"textures/icon2w/再生停止ボタン.png"
 const iconPath31 = ddbase2+"textures/icon2w/クロスカーソル.png"
@@ -176,6 +176,8 @@ export var createScene_test_3204 = async function () {
 
         let fpath = fpathList[istage];
         let image = new Image();
+        // CORS を使って画像を読み込む
+        image.crossOrigin = "anonymous";
         await new Promise((resolve, reject) => {
             image.onload = () => resolve(image);
             image.onerror = (e) => reject(new Error(`画像読み込み失敗: ${fpath}`));
@@ -200,7 +202,7 @@ export var createScene_test_3204 = async function () {
         // --------------------------------------------------
         // 100画素相当が100になるよう画素のサイズを調整
         let psize = 100/width, psize_ = psize/2;
-console.log("psize=", psize);
+
         // --------------------------------------------------
         let meshGrn = createGround(psize*width+20,psize*height+40,0,0,psize*height/2-10);
         meshStage.push(meshGrn);
