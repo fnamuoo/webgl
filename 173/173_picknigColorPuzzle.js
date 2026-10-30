@@ -11,13 +11,13 @@
 
 // ######################################################################
 
-const ddbase1="../170/";
-const ddbase2="../172/";
-const ddbase3="./";
+// const ddbase1="../170/";
+// const ddbase2="../172/";
+// const ddbase3="./";
 
-// const ddbase1="https://raw.githubusercontent.com/fnamuoo/webgl/main/170";
-// const ddbase2="https://raw.githubusercontent.com/fnamuoo/webgl/main/172";
-// const ddbase3="https://raw.githubusercontent.com/fnamuoo/webgl/main/173";
+const ddbase1="https://raw.githubusercontent.com/fnamuoo/webgl/main/170/";
+const ddbase2="https://raw.githubusercontent.com/fnamuoo/webgl/main/172/";
+const ddbase3="https://raw.githubusercontent.com/fnamuoo/webgl/main/173/";
 
 const iconPath52 = ddbase1+"textures/icon2w/コントロールボタン (7).png"
 const iconPath53 = ddbase1+"textures/icon2w/リロードアイコン.png"
@@ -278,7 +278,7 @@ console.log("state=",istage);
                     cvs.width = GRID_W; cvs.height = GRID_H;
                     let nc = 10;
                     for (let ic = 0; ic < nc; ++ic) {
-                        let c =  new BABYLON.Color3.Random();
+                        let c =  BABYLON.Color3.Random();
                         PALETTE.push({color:c, colorHSV:c.toHSV(), colorHex:c.toHexString()});
                     }
                     const ctx = cvs.getContext("2d");
